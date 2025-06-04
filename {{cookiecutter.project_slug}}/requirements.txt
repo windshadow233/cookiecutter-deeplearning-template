@@ -5,7 +5,5 @@ pycocotools==2.0.9
 PyYAML==6.0.2
 scikit-learn==1.6.1
 tensorboard==2.19.0
-torch==2.7.0
 torchmetrics==1.7.2
-torchvision==0.22.0
 tqdm==4.67.1

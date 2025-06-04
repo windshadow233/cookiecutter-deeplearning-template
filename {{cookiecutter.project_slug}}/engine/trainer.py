@@ -44,7 +44,7 @@ class Trainer:
         "cyclic",
         "onecycle",
     }
-    METRIC_BASED_SCHEDULERS = {
+    __METRIC_BASED_SCHEDULERS__ = {
         "plateau",
     }
 
@@ -217,7 +217,7 @@ class Trainer:
             scheduler_update = 'epoch'
         elif name in self.__STEP_BASED_SCHEDULERS__:
             scheduler_update = 'step'
-        elif name in self.METRIC_BASED_SCHEDULERS:
+        elif name in self.__METRIC_BASED_SCHEDULERS__:
             scheduler_update = 'metric'
             self.__setattr__('plateau_metric', params.pop('metric', 'val_loss'))
         else:
