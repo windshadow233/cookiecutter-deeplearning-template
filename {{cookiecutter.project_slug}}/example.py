@@ -4,6 +4,7 @@ import tqdm
 from torch import nn
 from torchvision import datasets, transforms as T
 from models.model import Model
+from dataset.dataset import Dataset
 from engine.trainer import Trainer
 from engine.tester import Tester
 
@@ -13,6 +14,29 @@ from utils.seed import set_seed
 from utils.logger import SimpleLogger
 from metrics.classification import *
 from metrics.metric import AvgMetric
+
+
+class MyData(Dataset):
+    def __init__(self):
+        super().__init__()
+        transform = T.Compose([
+            T.ToTensor(),
+            T.Resize((32, 32)),
+            T.Normalize((0.5,), (0.5,))
+        ])
+        self.dataset = datasets.MNIST(root='./data', train=True, download=True, transform=transform)
+
+    def __getitem__(self, item):
+        return self.dataset[item]
+
+    def __len__(self):
+        return len(self.dataset)
+
+    def data_collate_fn(self, batch):
+        images, labels = zip(*batch)
+        images = torch.stack(images, dim=0)
+        labels = torch.tensor(labels, dtype=torch.long)
+        return {'image': images, 'label': labels}
 
 
 class MyModel(Model):
@@ -39,14 +63,14 @@ class MyModel(Model):
         )
         self.loss_fcn = nn.CrossEntropyLoss()
 
-    def forward(self, x, y):
-        x = self.layer1(x)
-        x = x.reshape(x.shape[0], -1)
-        x = self.layer2(x)
-        loss = self.calc_loss(x, y)
+    def forward(self, image, label):
+        image = self.layer1(image)
+        image = image.reshape(image.shape[0], -1)
+        logits = self.layer2(image)
+        loss = self.calc_loss(image, label)
         return {
             'loss': loss,
-            'logits': x
+            'logits': logits
         }
 
     def calc_loss(self, x, y):
@@ -64,12 +88,6 @@ class MyTrainer(Trainer):
     ):
         super().__init__(model, dataset, cfg, exp_dir)
 
-    def data_collate_fn(self, batch):
-        images, labels = zip(*batch)
-        images = torch.stack(images, dim=0)
-        labels = torch.tensor(labels, dtype=torch.long)
-        return {'x': images, 'y': labels}
-
     @torch.no_grad()
     def validate_fn(self, dataloader):
         f1 = F1Score()
@@ -78,7 +96,7 @@ class MyTrainer(Trainer):
         acc = Accuracy()
         loss = AvgMetric()
         for batch in tqdm.tqdm(dataloader, desc='Validation'):
-            x, y = batch['x'], batch['y']
+            x, y = batch['image'], batch['label']
             count = len(y)
             out = self.model(x, y)
             logits = out['logits']
@@ -114,7 +132,7 @@ class MyTester(Tester):
         acc = Accuracy()
         loss = AvgMetric()
         for batch in tqdm.tqdm(dataloader, desc='Testing'):
-            x, y = batch['x'], batch['y']
+            x, y = batch['image'], batch['label']
             count = len(y)
             out = self.model(x, y)
             logits = out['logits']
@@ -148,23 +166,14 @@ if __name__ == "__main__":
     # set seed
     seed = CONFIG.get('seed', 42)
     set_seed(seed)
+    # create dataset
+    dataset = MyData()
     # initialize model
     model = MyModel()
-    # create dataset
-    transform = T.Compose([
-        T.ToTensor(),
-        T.Resize((32, 32)),
-        T.Normalize((0.5,), (0.5,))
-    ])
-    train_dataset = datasets.MNIST(root='./data', train=True, download=True, transform=transform)
-
-    dataloader = torch.utils.data.DataLoader(
-        train_dataset, batch_size=32, shuffle=True, num_workers=0
-    )
     # initialize trainer
     trainer = MyTrainer(
         model=model,
-        dataset=train_dataset,
+        dataset=dataset,
         cfg=CONFIG,
         exp_dir=exp_dir
     )

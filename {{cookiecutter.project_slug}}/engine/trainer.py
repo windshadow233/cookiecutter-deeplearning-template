@@ -98,11 +98,11 @@ class Trainer:
         train, valid, test = random_split(dataset, [train_len, valid_len, test_len])
 
         train_dataloader = DataLoader(train, batch_size=batch_size, shuffle=True, num_workers=num_workers,
-                                      collate_fn=self.data_collate_fn)
+                                      collate_fn=dataset.data_collate_fn)
         valid_dataloader = DataLoader(valid, batch_size=batch_size, shuffle=True, num_workers=num_workers,
-                                      collate_fn=self.data_collate_fn)
+                                      collate_fn=dataset.data_collate_fn)
         test_dataloader = DataLoader(test, batch_size=batch_size, shuffle=True, num_workers=num_workers,
-                                     collate_fn=self.data_collate_fn)
+                                     collate_fn=dataset.data_collate_fn)
 
         self.accelerator_cfg = self.train_cfg.get('accelerator', {})
         self.accelerator = Accelerator(
@@ -234,17 +234,6 @@ class Trainer:
         except Exception as e:
             self.logger.exception(f"Error creating scheduler: {e}, will not use a scheduler.")
             return '', scheduler_update, None
-
-    def data_collate_fn(self, batch):
-        """
-        Override this method in subclasses to implement custom collate function.
-
-        Must return a dict.
-        """
-        data, label = zip(*batch)
-        data = torch.stack(data, dim=0)
-        label = torch.tensor(label, dtype=torch.long)
-        return {'x': data, 'y': label}
 
     def run(self):
         self.logger.info("Training started.")
