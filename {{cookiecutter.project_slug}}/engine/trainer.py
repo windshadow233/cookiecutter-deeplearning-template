@@ -8,6 +8,7 @@ import tqdm
 import yaml
 from accelerate import Accelerator
 from torch.utils.data import random_split, DataLoader
+from torch import optim
 from torch.optim import lr_scheduler
 from utils.logger import get_logger
 from utils.config import load_cfg
@@ -16,6 +17,16 @@ from models.model import Model
 
 
 class Trainer:
+    __OPTIMIZERS__ = {
+        "adam": optim.Adam,
+        "sgd": optim.SGD,
+        "adamw": optim.AdamW,
+        "rmsprop": optim.RMSprop,
+        "adagrad": optim.Adagrad,
+        "adamax": optim.Adamax,
+        "asgd": optim.ASGD,
+        "adadelta": optim.Adadelta,
+    }
     __SCHEDULERS__ = {
         "step": lr_scheduler.StepLR,
         "multistep": lr_scheduler.MultiStepLR,
@@ -188,26 +199,18 @@ class Trainer:
         optimizer_type = optimizer_cfg.get('type', 'adam')
         learning_rate = optimizer_cfg.get('lr', 1e-5)
         weight_decay = optimizer_cfg.get('weight_decay', 0.0)
+        optim_params = optimizer_cfg.get('params', {})
 
-        if optimizer_type == 'adam':
-            beta1 = optimizer_cfg.get('beta1', 0.9)
-            beta2 = optimizer_cfg.get('beta2', 0.999)
-            return torch.optim.Adam(
-                params,
-                lr=learning_rate,
-                weight_decay=weight_decay,
-                betas=(beta1, beta2)
-            )
-        elif optimizer_type == 'sgd':
-            momentum = optimizer_cfg.get('momentum', 0.9)
-            return torch.optim.SGD(
-                params,
-                lr=learning_rate,
-                weight_decay=weight_decay,
-                momentum=momentum
-            )
-        else:
+        optimizer = self.__OPTIMIZERS__.get(optimizer_type.lower())
+        if optimizer is None:
             raise ValueError(f"Unsupported optimizer type: {optimizer_type}")
+
+        return optimizer(
+            params=params,
+            lr=learning_rate,
+            weight_decay=weight_decay,
+            **optim_params
+        )
 
     def build_scheduler(self, optimizer):
         scheduler_cfg = self.train_cfg.get('scheduler', {})

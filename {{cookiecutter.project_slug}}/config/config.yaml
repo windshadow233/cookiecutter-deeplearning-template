@@ -20,12 +20,27 @@ train:
     - 0.1 # 测试集比例
   num_workers: 0 # 数据加载工作线程数
   optimizer:
-    type: adam # 支持 "adam", "sgd""
+    type: adam # 支持 "adam", "sgd", "adamw", "rmsprop", "adagrad", "adadelta", "adamax", "asgd"
     lr: 0.00001
     weight_decay: 0
-    beta1: 0.9 # 仅对 "adam" 优化器有效
-    beta2: 0.999 # 仅对 "adam" 优化器有效
-    momentum: 0.9 # 仅对 "sgd" 优化器有效
+    params: # 优化器参数
+      ############# AdamW（当 type: adamw 时启用）
+#      betas: [0.9, 0.999]
+      ############# Adam（当 type: adam 时启用）
+      betas: [0.9, 0.999]
+      ############# SGD（当 type: sgd 时启用）
+#      momentum: 0.9
+      ############# RMSprop（当 type: rmsprop 时启用）
+#      alpha: 0.99
+      ############# Adagrad（当 type: adagrad 时启用）
+#      initial_accumulator_value: 0.1
+      ############# Adadelta（当 type: adadelta 时启用）
+#      rho: 0.9
+      ############# Adamax（当 type: adamax 时启用）
+#      betas: [0.9, 0.999]
+      ############# ASGD（当 type: asgd 时启用）
+#      lambd: 0.0001
+#      alpha: 0.75
   accelerator:
     gradient_accumulation_steps: 1 # 梯度累积步数
     mixed_precision: "no" # 支持 "no", "fp16", "bf16"
