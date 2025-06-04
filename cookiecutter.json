@@ -1,0 +1,7 @@
+{
+  "project_name": "My Deep Learning Project",
+  "project_slug": "my_dl_project",
+  "author_name": "Eric Fan",
+  "email": "fyz666@mail.ustc.edu.cn",
+  "use_gpu": ["yes", "no"]
+}

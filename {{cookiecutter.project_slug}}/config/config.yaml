@@ -1,0 +1,89 @@
+seed: 42 # 随机种子
+exp:
+  exp_dir: ./runs # 实验根目录（放置所有实验目录）
+logger:
+  type: simple  # 支持 "tensorboard", "simple"
+  log_dir: ./logs # 日志目录（相对于实验目录的路径）
+  level: INFO # 日志级别，支持 DEBUG, INFO, WARNING, ERROR, CRITICAL
+train:
+  batch_size: 32
+  epochs: 10
+  clip_grad: 1.0 # 梯度裁剪
+  device:
+    type: auto # 支持 "cpu", "cuda", "auto"
+    ids: # 如果使用 "cuda", 可以指定设备 ID 列表
+      - 0
+      - 1
+  data_split:
+    - 0.8 # 训练集比例
+    - 0.1 # 验证集比例
+    - 0.1 # 测试集比例
+  num_workers: 0 # 数据加载工作线程数
+  optimizer:
+    type: adam # 支持 "adam", "sgd""
+    lr: 0.00001
+    weight_decay: 0
+    beta1: 0.9 # 仅对 "adam" 优化器有效
+    beta2: 0.999 # 仅对 "adam" 优化器有效
+    momentum: 0.9 # 仅对 "sgd" 优化器有效
+  accelerator:
+    gradient_accumulation_steps: 1 # 梯度累积步数
+    mixed_precision: "no" # 支持 "no", "fp16", "bf16"
+    split_batches: true
+  save:
+    save_best: true # 是否保存最好的模型（以save_freq为测试频率）
+    save_freq: 2 # 模型保存频率，单位为 epoch
+    save_best_metric: val_f1 # 最佳模型的指标, 支持 "val_loss", "val_acc" 等，取决于 validate_fcn 函数的返回值
+    best_mode: max # 最佳模型的指标模式，支持 "min", "max"
+    save_last: true # 是否保存最新的模型 (如需要断点续训则必须开启)
+    save_last_freq: 1 # 最新模型保存频率，单位为 epoch
+  scheduler:
+    name: cosine  # 支持：none, step, multistep, constant, linear, exp, poly, cosine, cosine_restart, cyclic, onecycle, plateau
+
+    ########## 根据对应的 name 启用不同的参数配置（根据对应调度器的初始化函数指定参数值） ##########
+    params:
+      ############# StepLR（当 name: step 时启用）
+#     step_size: 10
+#     gamma: 0.1
+      ############# MultiStepLR（当 name: multistep 时启用）
+#     milestones: [30, 60, 90]
+#     gamma: 0.1
+      ############# ConstantLR（当 name: constant 时启用）
+#     factor: 1.0
+#     total_iters: 5
+      ############# LinearLR（当 name: linear 时启用）
+#     start_factor: 0.1
+#     total_iters: 5
+      ############# ExponentialLR（当 name: exp 时启用）
+#     gamma: 0.9
+      ############# PolynomialLR（当 name: poly 时启用）
+#     total_iters: 100
+#     power: 2.0
+#     eta_min: 0.0
+      ############# CosineAnnealingLR（当 name: cosine 时启用）
+     T_max: 20
+     eta_min: 1.0e-6
+      ############# CosineAnnealingWarmRestarts（当 name: cosine_restart 时启用）
+#     T_0: 10
+#     T_mult: 2
+#     eta_min: 0.0
+      ############# OneCycleLR（当 name: onecycle 时启用）
+#     max_lr: 0.001
+#     steps_per_epoch: 100
+#     epochs: 20
+#     pct_start: 0.3
+#     anneal_strategy: cos  # or "linear"
+#     div_factor: 25.0
+#     final_div_factor: 1.0e4
+#     three_phase: false
+      ############# ReduceLROnPlateau（当 name: plateau 时启用）
+#     mode: max  # 支持 "min", "max"
+#     factor: 0.1
+#     patience: 2
+#     threshold: 0.0001
+#     threshold_mode: rel  # 支持 "rel", "abs"
+#     cooldown: 0
+#     min_lr: 0.0
+#     eps: 1.0e-8
+#
+#     metric: val_acc  # plateau 监控指标，支持 "val_loss", "val_acc" 等

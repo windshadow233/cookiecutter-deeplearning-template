@@ -1,0 +1,47 @@
+import torch
+import logging
+import os
+from accelerate import Accelerator
+from utils.config import load_cfg
+
+
+class Tester:
+    def __init__(self, model, ckpt_name, dataloader, exp_dir):
+        self.model = model.eval()
+        self.ckpt_name = ckpt_name
+        self.dataloader = dataloader
+        self.exp_dir = exp_dir
+        self.cfg = {}
+
+        self._load_checkpoint(ckpt_name)
+        self.accelerator = Accelerator(
+            device_placement=True,
+            **self.cfg.get('train', {}).get('accelerator', {})
+        )
+
+        self.dataloader, self.model = self.accelerator.prepare(self.dataloader, self.model)
+
+    def _load_config(self):
+        if os.path.exists(cfg_path := os.path.join(self.exp_dir, 'config.yaml')):
+            self.cfg.update(load_cfg(cfg_path))
+            logging.info(f"Configuration loaded from {os.path.join(self.exp_dir, 'config.yaml')}")
+
+    def _load_checkpoint(self, ckpt_name: str):
+        ckpt_path = os.path.join(self.exp_dir, 'checkpoints', ckpt_name)
+        if not os.path.isfile(ckpt_path):
+            logging.warning("No checkpoint found, skipping loading.")
+            return
+        checkpoint = torch.load(ckpt_path, map_location="cpu")
+        self.model.load_state_dict(checkpoint["model"])
+        logging.info(f"Loaded checkpoint from {ckpt_path}")
+
+    @torch.no_grad()
+    def run(self):
+        metrics = self.test_fn(self.dataloader)
+        logging.info(f"Test metrics: {metrics}")
+
+    @torch.no_grad()
+    def test_fn(self, dataloader):
+        raise NotImplementedError(
+            "test_fn method should be implemented in the subclass of Tester"
+        )
