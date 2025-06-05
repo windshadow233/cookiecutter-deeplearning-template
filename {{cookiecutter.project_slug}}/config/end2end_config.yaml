@@ -1,9 +1,9 @@
 seed: 42 # 随机种子
 exp:
-  exp_dir: ./runs # 实验根目录（放置所有实验目录）
+  path: ./runs # 实验根目录（放置所有实验目录）
 logger:
   type: simple  # 支持 "tensorboard", "simple"
-  log_dir: ./logs # 日志目录（相对于实验目录的路径）
+  path: ./logs # 日志目录（相对于实验目录的路径）
   level: INFO # 日志级别，支持 DEBUG, INFO, WARNING, ERROR, CRITICAL
 train:
   batch_size: 32

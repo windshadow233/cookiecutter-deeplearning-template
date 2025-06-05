@@ -142,7 +142,7 @@ def get_logger(cfg, exp_dir):
     init_logger(cfg)
     logger_type = cfg.get("logger", {}).get("type", "simple").lower()
     if logger_type == "tensorboard":
-        log_dir: str = cfg.get('logger').get("log_dir", "logs")
+        log_dir: str = cfg.get('logger').get("path", "logs")
         log_dir = os.path.join(exp_dir, log_dir)
         tb_logger = SummaryWriter(log_dir=log_dir)
         return TensorboardLogger(cfg, tb_logger)

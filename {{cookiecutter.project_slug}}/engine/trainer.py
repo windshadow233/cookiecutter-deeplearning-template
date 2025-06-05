@@ -114,6 +114,11 @@ class Trainer:
         test_dataloader = DataLoader(test, batch_size=batch_size, shuffle=True, num_workers=num_workers,
                                      collate_fn=dataset.data_collate_fn)
 
+        self.scheduler_name, self.scheduler_update, self.scheduler = self.build_scheduler(self.optimizer)
+
+        resume_ckpt = resume_ckpt or 'last.pt'
+        self._load_checkpoint(ckpt_name=resume_ckpt)
+
         self.accelerator_cfg = self.train_cfg.get('accelerator', {})
         self.accelerator = Accelerator(
             device_placement=True,
@@ -128,11 +133,6 @@ class Trainer:
                 self.model,
                 self.optimizer
             )
-
-        self.scheduler_name, self.scheduler_update, self.scheduler = self.build_scheduler(self.optimizer)
-
-        resume_ckpt = resume_ckpt or 'last.pt'
-        self._load_checkpoint(ckpt_name=resume_ckpt)
 
     def _setup_device(self):
         device_cfg = self.train_cfg.get('device', {})
@@ -164,7 +164,7 @@ class Trainer:
     def _save_checkpoint(self, ckpt_name='last.pt'):
         ckpt = os.path.join(self.checkpoint_dir, ckpt_name)
         state_dicts = {
-            'model': self.model.state_dict(),
+            'model': self.accelerator.get_state_dict(self.model),
             'optimizer': self.optimizer.state_dict(),
             'scheduler': self.scheduler.state_dict() if self.scheduler else None,
             'current_epoch': self.current_epoch,

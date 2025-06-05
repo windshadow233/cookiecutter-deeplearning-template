@@ -25,14 +25,14 @@ def load_checkpoint(file_path):
     Returns:
         The loaded model.
     """
-    static_dicts = torch.load(file_path)
+    static_dicts = torch.load(file_path, map_location="cpu")
     logging.info(f"Checkpoint loaded from {file_path}")
     return static_dicts
 
 
 def create_exp_dir(cfg, exp_dir_base_name):
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    exp_folder = os.path.join(cfg.get("exp", {}).get("exp_dir_base_name", "runs"), f"{exp_dir_base_name}_{timestamp}")
+    exp_folder = os.path.join(cfg.get("exp", {}).get("path", "runs"), f"{exp_dir_base_name}_{timestamp}")
     os.makedirs(exp_folder, exist_ok=True)
     logging.info(f"Experiment folder created at {exp_folder}")
     return exp_folder
