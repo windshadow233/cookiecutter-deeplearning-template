@@ -4,7 +4,7 @@ import argparse
 from pathlib import Path
 
 
-def load_cfg(config_path: str = "config/config.yaml") -> dict:
+def load_cfg(config_path: str = "config/end2end_config.yaml") -> dict:
     """
     加载配置文件，可通过命令行参数 --config 覆盖默认路径。
 
@@ -28,4 +28,5 @@ def load_cfg(config_path: str = "config/config.yaml") -> dict:
     return cfg
 
 
-CONFIG = load_cfg(str(Path(__file__).parent.parent / "config" / "config.yaml"))
+def load_end2end_cfg():
+    return load_cfg(str(Path(__file__).parent.parent / "config" / "end2end_config.yaml"))

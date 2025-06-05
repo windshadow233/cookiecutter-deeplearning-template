@@ -6,7 +6,6 @@ from collections import defaultdict
 import matplotlib.pyplot as plt
 from matplotlib.ticker import MaxNLocator
 import math
-from utils.config import CONFIG
 
 
 class ColorFormatter(logging.Formatter):
@@ -140,6 +139,7 @@ class SimpleLogger(Logger):
 
 
 def get_logger(cfg, exp_dir):
+    init_logger(cfg)
     logger_type = cfg.get("logger", {}).get("type", "simple").lower()
     if logger_type == "tensorboard":
         log_dir: str = cfg.get('logger').get("log_dir", "logs")
@@ -150,6 +150,3 @@ def get_logger(cfg, exp_dir):
         return SimpleLogger(cfg)
     else:
         raise ValueError(f"Unknown logger type: {logger_type}")
-
-
-init_logger(CONFIG)

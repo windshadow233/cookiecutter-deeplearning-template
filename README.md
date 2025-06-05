@@ -208,7 +208,7 @@ class MyTester(Tester):
 接下来，编写脚本，在其中加载配置文件，创建数据集、模型、训练器和测试器，并执行训练和测试流程。
 
 ```python
-from utils.config import CONFIG
+from utils.config import load_end2end_cfg
 from utils.other_utils import create_exp_dir
 from utils.seed import set_seed
 from utils.logger import SimpleLogger
@@ -216,12 +216,14 @@ import os
 
 
 if __name__ == "__main__":
+    # 加载配置文件
+    cfg = load_end2end_cfg()
     # 创建一个新的实验目录
-    exp_dir = create_exp_dir(CONFIG, 'exp')
+    exp_dir = create_exp_dir(cfg, 'exp')
     # 或者使用指定的已存在的实验目录（从上一个保存断点（或通过 Trainer 的 resume_ckpt 参数指定）继续训练）
     # exp_dir = "runs/exp_20250604_152711"
     # 设置随机种子
-    seed = CONFIG.get('seed', 42)
+    seed = cfg.get('seed', 42)
     set_seed(seed)
     # 初始化数据集
     dataset = MyData()
@@ -231,7 +233,7 @@ if __name__ == "__main__":
     trainer = MyTrainer(
         model=model,
         dataset=dataset,
-        cfg=CONFIG,
+        cfg=cfg,
         exp_dir=exp_dir,
         resume_ckpt=None
     )

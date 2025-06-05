@@ -8,7 +8,7 @@ from dataset.dataset import Dataset
 from engine.trainer import Trainer
 from engine.tester import Tester
 
-from utils.config import CONFIG
+from utils.config import load_end2end_cfg
 from utils.other_utils import create_exp_dir
 from utils.seed import set_seed
 from utils.logger import SimpleLogger
@@ -160,12 +160,14 @@ class MyTester(Tester):
 
 
 if __name__ == "__main__":
+    # load configuration
+    cfg = load_end2end_cfg()
     # create exp dir
-    # exp_dir = create_exp_dir(CONFIG, 'exp')
+    exp_dir = create_exp_dir(cfg, 'exp')
     # or use a specific experiment directory
-    exp_dir = "runs/exp_20250605_133422"
+    # exp_dir = "runs/exp_20250605_133422"
     # set seed
-    seed = CONFIG.get('seed', 42)
+    seed = cfg.get('seed', 42)
     set_seed(seed)
     # create dataset
     dataset = MyData()
@@ -175,7 +177,7 @@ if __name__ == "__main__":
     trainer = MyTrainer(
         model=model,
         dataset=dataset,
-        cfg=CONFIG,
+        cfg=cfg,
         exp_dir=exp_dir,
         resume_ckpt='last.pt'
     )
