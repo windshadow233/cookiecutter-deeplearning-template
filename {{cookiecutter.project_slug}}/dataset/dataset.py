@@ -1,5 +1,5 @@
 from torch.utils.data import Dataset as D
-import torch
+from torch.utils.data._utils.collate import default_collate
 
 
 class Dataset(D):
@@ -10,6 +10,11 @@ class Dataset(D):
         ...
 
     def __getitem__(self, item):
+        """
+        Retrieve an item from the dataset.
+        :param item: index
+        :return: return a dict by default
+        """
         ...
 
     def data_collate_fn(self, batch):
@@ -18,7 +23,4 @@ class Dataset(D):
         This function should be overridden in subclasses to provide
         specific batching logic.
         """
-        data, label = zip(*batch)
-        data = torch.stack(data, dim=0)
-        label = torch.tensor(label, dtype=torch.long)
-        return {'x': data, 'y': label}
+        return default_collate(batch)

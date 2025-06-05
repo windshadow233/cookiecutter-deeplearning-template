@@ -48,11 +48,12 @@ chmod +x setup.sh
 
 - `__getitem__`：获取单个数据样本。
 - `__len__`：返回数据集的大小。
-- `data_collate_fn`：用于将一批数据样本合并成一个批次，通常用于处理不同大小的输入数据，返回一个 `dict`。
+- `data_collate_fn`：用于将一批数据样本合并成一个批次，返回一个 `dict`。
 
-默认的 `data_collate_fn` 方法会将数据样本的第一个元素作为输入特征 `x`，第二个元素作为标签 `y`，并将它们打包成一个字典返回。你可以根据需要自定义这个方法来处理更复杂的数据结构。
+默认的 `data_collate_fn` 方法调用 `torch.utils.data._utils.collate.default_collate`。你可以根据需要重写这个方法来处理更复杂的数据结构。
 
-`data_collate_fn` 方法必须返回一个 `dict`，其键值将作为模型前向传播函数的`**kwargs`使用。（如重写 `Trainer.train_step` 函数则可忽略此条）
+`data_collate_fn` 方法必须返回一个 `dict`，其键值将作为模型前向传播函数的`**kwargs`使用，默认情况下，这要求
+`__getitem__` 方法返回一个 `dict`。（如重写 `Trainer.train_step` 函数则可忽略此条）
 
 例如：
 
@@ -72,16 +73,22 @@ class MyData(Dataset):
         self.dataset = datasets.MNIST(root='./data', train=True, download=True, transform=transform)
 
     def __getitem__(self, item):
-        return self.dataset[item]
+        """
+        获取单个数据样本
+        默认情况下，请返回一个 dict
+        """
+        x, y = self.dataset[item]
+        return {'image': x, 'label': y}
 
     def __len__(self):
         return len(self.dataset)
 
     def data_collate_fn(self, batch):
-        images, labels = zip(*batch)
-        images = torch.stack(images, dim=0)
-        labels = torch.tensor(labels, dtype=torch.long)
-        return {'image': images, 'label': labels}
+        """
+        默认使用此方法，亦可重写
+        """
+        from torch.utils.data._utils.collate import default_collate
+        return default_collate(batch)
 ```
 
 ---

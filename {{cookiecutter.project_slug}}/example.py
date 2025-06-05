@@ -27,16 +27,11 @@ class MyData(Dataset):
         self.dataset = datasets.MNIST(root='./data', train=True, download=True, transform=transform)
 
     def __getitem__(self, item):
-        return self.dataset[item]
+        x, y = self.dataset[item]
+        return {'image': x, 'label': y}
 
     def __len__(self):
         return len(self.dataset)
-
-    def data_collate_fn(self, batch):
-        images, labels = zip(*batch)
-        images = torch.stack(images, dim=0)
-        labels = torch.tensor(labels, dtype=torch.long)
-        return {'image': images, 'label': labels}
 
 
 class MyModel(Model):
