@@ -9,7 +9,7 @@ from engine.trainer import Trainer
 from engine.tester import Tester
 
 from utils.config import load_end2end_cfg
-from utils.other_utils import create_exp_dir
+from utils.misc import create_exp_dir
 from utils.seed import set_seed
 from utils.logger import SimpleLogger
 from metrics.classification import *
@@ -160,7 +160,7 @@ if __name__ == "__main__":
     # create exp dir
     exp_dir = create_exp_dir(cfg, 'exp')
     # or use a specific experiment directory
-    # exp_dir = "runs/exp_20250605_133422"
+    # exp_dir = "runs/exp_20250605_152255"
     # set seed
     seed = cfg.get('seed', 42)
     set_seed(seed)
@@ -174,7 +174,7 @@ if __name__ == "__main__":
         dataset=dataset,
         cfg=cfg,
         exp_dir=exp_dir,
-        resume_ckpt='last.pt'
+        resume_ckpt='ckpt_epoch_2.pt'
     )
     trainer.run()
 

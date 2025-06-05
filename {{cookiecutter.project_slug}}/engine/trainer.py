@@ -10,7 +10,7 @@ from torch import optim
 from torch.optim import lr_scheduler
 from utils.logger import get_logger
 from utils.config import load_cfg
-from utils.other_utils import save_checkpoint, load_checkpoint
+from utils.misc import save_checkpoint, load_checkpoint
 from models.model import Model
 
 

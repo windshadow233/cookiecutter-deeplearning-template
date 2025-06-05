@@ -216,11 +216,10 @@ class MyTester(Tester):
 
 ```python
 from utils.config import load_end2end_cfg
-from utils.other_utils import create_exp_dir
+from utils.misc import create_exp_dir
 from utils.seed import set_seed
 from utils.logger import SimpleLogger
 import os
-
 
 if __name__ == "__main__":
     # 加载配置文件
@@ -249,7 +248,7 @@ if __name__ == "__main__":
     # 绘制训练过程中的指标图表
     if isinstance(trainer.logger, SimpleLogger):
         trainer.logger.plot(os.path.join(exp_dir, 'plot.png'))
-    
+
     # 初始化测试器
     tester = MyTester(
         model=model,
