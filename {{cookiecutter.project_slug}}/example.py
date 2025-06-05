@@ -67,7 +67,7 @@ class MyModel(Model):
         image = self.layer1(image)
         image = image.reshape(image.shape[0], -1)
         logits = self.layer2(image)
-        loss = self.calc_loss(image, label)
+        loss = self.calc_loss(logits, label)
         return {
             'loss': loss,
             'logits': logits

@@ -1,12 +1,10 @@
 import copy
 import logging
-
-import torch
 import os
-
 import tqdm
 import yaml
 from accelerate import Accelerator
+import torch
 from torch.utils.data import random_split, DataLoader
 from torch import optim
 from torch.optim import lr_scheduler
@@ -204,7 +202,6 @@ class Trainer:
         optimizer = self.__OPTIMIZERS__.get(optimizer_type.lower())
         if optimizer is None:
             raise ValueError(f"Unsupported optimizer type: {optimizer_type}")
-
         return optimizer(
             params=params,
             lr=learning_rate,
@@ -222,7 +219,7 @@ class Trainer:
             scheduler_update = 'step'
         elif name in self.__METRIC_BASED_SCHEDULERS__:
             scheduler_update = 'metric'
-            self.__setattr__('plateau_metric', params.pop('metric', 'val_loss'))
+            self.__setattr__('scheduler_metric', params.pop('metric', 'val_loss'))
         else:
             scheduler_update = ''
         try:
@@ -238,6 +235,50 @@ class Trainer:
             self.logger.exception(f"Error creating scheduler: {e}, will not use a scheduler.")
             return '', scheduler_update, None
 
+    def scheduler_step(self, mode="step"):
+        if self.scheduler_update != mode or not self.scheduler:
+            return
+        if mode != "metric":
+            self.scheduler.step()
+            return
+        key = self.__getattribute__('scheduler_metric')
+        assert key in self.metrics, f"Scheduler metric '{key}' not found in validation metrics"
+        self.scheduler.step(self.metrics[key])
+
+    def _train_step(self, data):
+        self.global_steps += 1
+        log_items = self.train_step(self.model, data, self.optimizer, self.accelerator)
+        self.scheduler_step('step')
+        if log_items:
+            self.logger.log(log_items, step=self.global_steps)
+
+    def train_step(self, model, data, optimizer, accelerator):
+        """
+        单次训练步骤，支持重写
+        :param model: 模型实例
+        :param data: 输入数据
+        :param optimizer: 优化器
+        :param accelerator: 加速器实例
+        :return: 返回一个包含各种自定义日志记录指标的字典（也可什么都不返回）
+        """
+        assert isinstance(data, dict), "Data must be a dict"
+        out = model(**data)
+        assert isinstance(out, dict) and 'loss' in out, "Model output must be a dict with a 'loss' key"
+        loss = out['loss']
+        accelerator.backward(loss)
+        if self.clip_grad is not None:
+            if accelerator.sync_gradients:
+                accelerator.clip_grad_norm_(model.parameters(), max_norm=self.clip_grad)
+        optimizer.step()
+        optimizer.zero_grad()
+
+        log_items = {
+            "loss": loss.item()
+        }
+        if self.scheduler is not None:
+            log_items['lr'] = self.optimizer.param_groups[0]['lr']
+        return log_items
+
     def run(self):
         self.logger.info("Training started.")
         start_epoch = self.current_epoch
@@ -245,28 +286,9 @@ class Trainer:
             self.current_epoch = epoch + 1
             self.model.train()
             for data in tqdm.tqdm(self.train_dataloader, desc=f"Epoch {self.current_epoch}/{self.epochs}"):
-                self.global_steps += 1
-                assert isinstance(data, dict), "Data must be a dict"
-                out = self.model(**data)
-                assert isinstance(out, dict) and 'loss' in out, "Model output must be a dict with a 'loss' key"
-                loss = out['loss']
-                log_items = {
-                    "loss": loss.item()
-                }
-                if self.scheduler is not None:
-                    log_items['lr'] = self.optimizer.param_groups[0]['lr']
-                self.logger.log(log_items, step=self.global_steps)
-                self.accelerator.backward(loss)
-                if self.clip_grad is not None:
-                    if self.accelerator.sync_gradients:
-                        self.accelerator.clip_grad_norm_(self.model.parameters(), max_norm=self.clip_grad)
-                self.optimizer.step()
-                self.optimizer.zero_grad()
-                if self.scheduler and self.scheduler_update == "step":
-                    self.scheduler.step()
+                self._train_step(data)
 
-            if self.scheduler and self.scheduler_update == "epoch":
-                self.scheduler.step()
+            self.scheduler_step('epoch')
             save_last = self.save_last and (epoch + 1) % self.save_last_freq == 0
             save_best = self.save_best
             save_current = (epoch + 1) % self.save_freq == 0
@@ -275,10 +297,7 @@ class Trainer:
                 self.metrics = self.validate_fn(self.valid_dataloader)
                 for key, value in self.metrics.items():
                     self.logger.log({key: value}, step=self.global_steps)
-                if self.scheduler and self.scheduler_update == "metric":
-                    key = self.__getattribute__('plateau_metric')
-                    assert key in self.metrics, f"Metric '{key}' not found in validation metrics"
-                    self.scheduler.step(self.metrics[key])
+                self.scheduler_step("metric")
                 assert isinstance(self.metrics, dict), "Validation metrics must be a dict"
                 if save_best:
                     if self.best_mode == 'min':
@@ -301,4 +320,3 @@ class Trainer:
     @torch.no_grad()
     def validate_fn(self, dataloader):
         raise NotImplementedError("validate_fcn must be implemented in subclasses")
-

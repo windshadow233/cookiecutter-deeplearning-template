@@ -52,7 +52,7 @@ chmod +x setup.sh
 
 默认的 `data_collate_fn` 方法会将数据样本的第一个元素作为输入特征 `x`，第二个元素作为标签 `y`，并将它们打包成一个字典返回。你可以根据需要自定义这个方法来处理更复杂的数据结构。
 
-`data_collate_fn` 方法必须返回一个 `dict`，其键值将作为模型前向传播函数的`**kwargs`使用。
+`data_collate_fn` 方法必须返回一个 `dict`，其键值将作为模型前向传播函数的`**kwargs`使用。（如重写 `Trainer.train_step` 函数则可忽略此条）
 
 例如：
 
@@ -90,7 +90,7 @@ class MyData(Dataset):
 
 - `forward`：模型的前向传播函数，接收数据集的输出作为输入，返回一个 `dict`。
 
-此方法必须以前面数据集类的 `data_collate_fn` 方法返回的字典键名作为输入参数，同时返回一个 `dict`，此 `dict` 必须至少包含键 `loss`。
+此方法必须以前面数据集类的 `data_collate_fn` 方法返回的字典键名作为输入参数，同时返回一个 `dict`，此 `dict` 必须至少包含键 `loss`。（如重写 `Trainer.train_step` 函数则可忽略此条）
 
 ```python
 from models.model import Model
@@ -155,6 +155,29 @@ train:
 ```
 
 `train.save.save_best_metric` 及 `train.scheduler.params.metric` 的值必须包含于 `validate_fn` 方法返回的字典键名中。
+
+可重写 `Trainer.train_step` 函数：
+
+```python
+class MyTrainer(Trainer):
+    def train_step(self, model, data, optimizer, accelerator):
+        """
+        单次训练步骤，支持重写
+        :param model: 模型实例
+        :param data: 输入数据
+        :param optimizer: 优化器
+        :param accelerator: 加速器实例
+        :return: 返回一个包含各种自定义日志记录指标的字典（也可什么都不返回）
+        """
+        ...
+        ### return something as a dict like this, or just return None
+        return {
+            'loss': loss.item(),
+            'lr': self.optimizer.param_groups[0]['lr']
+        }
+```
+
+如重写此函数，则可以忽略前面的诸多数据格式要求。
 
 ---
 
