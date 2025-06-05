@@ -61,7 +61,8 @@ class Trainer:
                  model: Model,
                  dataset,
                  cfg,
-                 exp_dir):
+                 exp_dir,
+                 resume_ckpt=None):
         self.total_cfg = cfg
         self.exp_dir = exp_dir
         self._load_config()
@@ -130,7 +131,8 @@ class Trainer:
 
         self.scheduler_name, self.scheduler_update, self.scheduler = self.build_scheduler(self.optimizer)
 
-        self._load_checkpoint()
+        resume_ckpt = resume_ckpt or 'last.pt'
+        self._load_checkpoint(ckpt_name=resume_ckpt)
 
     def _setup_device(self):
         device_cfg = self.train_cfg.get('device', {})
@@ -161,7 +163,7 @@ class Trainer:
 
     def _save_checkpoint(self, ckpt_name='last.pt'):
         ckpt = os.path.join(self.checkpoint_dir, ckpt_name)
-        save_checkpoint({
+        state_dicts = {
             'model': self.model.state_dict(),
             'optimizer': self.optimizer.state_dict(),
             'scheduler': self.scheduler.state_dict() if self.scheduler else None,
@@ -170,7 +172,8 @@ class Trainer:
             'metrics': self.metrics,
             'best_metric': self.best_metric,
             'logger': self.logger.state_dict()
-        }, ckpt)
+        }
+        save_checkpoint(state_dicts, ckpt)
 
     def _load_checkpoint(self, ckpt_name='last.pt'):
         if os.path.exists(last := os.path.join(self.checkpoint_dir, ckpt_name)):
@@ -279,6 +282,33 @@ class Trainer:
             log_items['lr'] = self.optimizer.param_groups[0]['lr']
         return log_items
 
+    def _save(self, epoch):
+        save_last = self.save_last and (epoch + 1) % self.save_last_freq == 0
+        save_best = self.save_best
+        save_current = (epoch + 1) % self.save_freq == 0
+        if save_last or save_current or self.scheduler_update == "metric":
+            self.model.eval()
+            self.metrics = self.validate_fn(self.valid_dataloader)
+            for key, value in self.metrics.items():
+                self.logger.log({key: value}, step=self.global_steps)
+            self.scheduler_step("metric")
+            assert isinstance(self.metrics, dict), "Validation metrics must be a dict"
+            if save_best:
+                if self.best_mode == 'min':
+                    if (new_best := self.metrics[self.save_best_metric]) < self.best_metric:
+                        self.best_metric = new_best
+                        self._save_checkpoint('best.pt')
+                        self.logger.info(f"New best metric ({self.save_best_metric}): {new_best:.4f}")
+                else:
+                    if (new_best := self.metrics[self.save_best_metric]) > self.best_metric:
+                        self.best_metric = new_best
+                        self._save_checkpoint('best.pt')
+                        self.logger.info(f"New best metric ({self.save_best_metric}): {new_best:.4f}")
+            if save_last:
+                self._save_checkpoint('last.pt')
+            if save_current:
+                self._save_checkpoint(f'ckpt_epoch_{epoch + 1}.pt')
+
     def run(self):
         self.logger.info("Training started.")
         start_epoch = self.current_epoch
@@ -287,33 +317,9 @@ class Trainer:
             self.model.train()
             for data in tqdm.tqdm(self.train_dataloader, desc=f"Epoch {self.current_epoch}/{self.epochs}"):
                 self._train_step(data)
+            self._save(epoch)
 
             self.scheduler_step('epoch')
-            save_last = self.save_last and (epoch + 1) % self.save_last_freq == 0
-            save_best = self.save_best
-            save_current = (epoch + 1) % self.save_freq == 0
-            if save_last or save_current or self.scheduler_update == "metric":
-                self.model.eval()
-                self.metrics = self.validate_fn(self.valid_dataloader)
-                for key, value in self.metrics.items():
-                    self.logger.log({key: value}, step=self.global_steps)
-                self.scheduler_step("metric")
-                assert isinstance(self.metrics, dict), "Validation metrics must be a dict"
-                if save_best:
-                    if self.best_mode == 'min':
-                        if (new_best := self.metrics[self.save_best_metric]) < self.best_metric:
-                            self.best_metric = new_best
-                            self._save_checkpoint('best.pt')
-                            self.logger.info(f"New best metric ({self.save_best_metric}): {new_best:.4f}")
-                    else:
-                        if (new_best := self.metrics[self.save_best_metric]) > self.best_metric:
-                            self.best_metric = new_best
-                            self._save_checkpoint('best.pt')
-                            self.logger.info(f"New best metric ({self.save_best_metric}): {new_best:.4f}")
-                if save_last:
-                    self._save_checkpoint('last.pt')
-                if save_current:
-                    self._save_checkpoint(f'ckpt_epoch_{epoch + 1}.pt')
 
         self.logger.info("Training completed.")
 

@@ -116,6 +116,7 @@ class SimpleLogger(Logger):
             axes[idx].set_xlabel("Step")
             axes[idx].set_ylabel("Value")
             axes[idx].xaxis.set_major_locator(MaxNLocator(integer=True))
+            axes[idx].xaxis.set_major_locator(MaxNLocator(nbins='auto', integer=True, prune='both'))
         for j in range(len(self.logs), len(axes)):
             fig.delaxes(axes[j])
 

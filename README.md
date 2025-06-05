@@ -127,9 +127,10 @@ class MyTrainer(Trainer):
             model,
             dataset,
             cfg,
-            exp_dir
+            exp_dir,
+            resume_ckpt=None
     ):
-        super().__init__(model, dataset, cfg, exp_dir)
+        super().__init__(model, dataset, cfg, exp_dir, resume_ckpt)
 
     @torch.no_grad()
     def validate_fn(self, dataloader):
@@ -217,7 +218,7 @@ import os
 if __name__ == "__main__":
     # 创建一个新的实验目录
     exp_dir = create_exp_dir(CONFIG, 'exp')
-    # 或者使用指定的已存在的实验目录（从上一个保存断点继续训练）
+    # 或者使用指定的已存在的实验目录（从上一个保存断点（或通过 Trainer 的 resume_ckpt 参数指定）继续训练）
     # exp_dir = "runs/exp_20250604_152711"
     # 设置随机种子
     seed = CONFIG.get('seed', 42)
@@ -231,7 +232,8 @@ if __name__ == "__main__":
         model=model,
         dataset=dataset,
         cfg=CONFIG,
-        exp_dir=exp_dir
+        exp_dir=exp_dir,
+        resume_ckpt=None
     )
     # 运行训练器
     trainer.run()

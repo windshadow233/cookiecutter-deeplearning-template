@@ -84,9 +84,10 @@ class MyTrainer(Trainer):
             model,
             dataset,
             cfg,
-            exp_dir
+            exp_dir,
+            resume_ckpt
     ):
-        super().__init__(model, dataset, cfg, exp_dir)
+        super().__init__(model, dataset, cfg, exp_dir, resume_ckpt)
 
     @torch.no_grad()
     def validate_fn(self, dataloader):
@@ -160,9 +161,9 @@ class MyTester(Tester):
 
 if __name__ == "__main__":
     # create exp dir
-    exp_dir = create_exp_dir(CONFIG, 'exp')
+    # exp_dir = create_exp_dir(CONFIG, 'exp')
     # or use a specific experiment directory
-    # exp_dir = "runs/exp_20250604_152711"
+    exp_dir = "runs/exp_20250605_133422"
     # set seed
     seed = CONFIG.get('seed', 42)
     set_seed(seed)
@@ -175,7 +176,8 @@ if __name__ == "__main__":
         model=model,
         dataset=dataset,
         cfg=CONFIG,
-        exp_dir=exp_dir
+        exp_dir=exp_dir,
+        resume_ckpt='last.pt'
     )
     trainer.run()
 
