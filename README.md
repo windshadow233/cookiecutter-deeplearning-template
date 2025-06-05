@@ -19,7 +19,7 @@
 
 项目包含一个示例脚本 `example.py`，可以作为使用模板的参考。以下是一些基本的使用步骤：
 
-新建项目环境，然后安装 `cookiecutter`：
+新建项目环境（建议 Python 3.9），然后安装 `cookiecutter`：
 
 ```bash
 pip install cookiecutter
