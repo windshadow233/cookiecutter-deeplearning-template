@@ -40,9 +40,11 @@ chmod +x setup.sh
 
 然后即可开始深度学习项目开发。
 
+主要流程如下：
+
 ---
 
-主要流程如下：
+### 定义数据集
 
 首先，定义数据集，继承自 `dataset.dataset.Dataset` 类，并实现必要的方法：
 
@@ -96,6 +98,8 @@ class MyData(Dataset):
 
 ---
 
+### 定义模型
+
 接下来，编写模型类代码，继承自 `models.model.Model` 类，并实现必要的方法：
 
 - `forward`：模型的前向传播函数，接收数据集的输出作为输入，返回一个 `dict`。
@@ -126,6 +130,8 @@ class MyModel(Model):
 - `load`: 加载模型，默认使用 `torch.load` 加载模型的 `state_dict`。
 
 ---
+
+### 定义训练器
 
 编写训练器类代码，继承自 `engine.trainer.Trainer` 类，并实现必要的方法：
 
@@ -201,6 +207,8 @@ class MyTrainer(Trainer):
 
 ---
 
+### 定义测试器
+
 编写测试器类代码，继承自 `engine.tester.Tester` 类，并实现必要的方法：
 
 - `test_fn`: 测试函数，以 `dataloader: torch.utils.data.DataLoader` 为参数，返回一个 `dict`，包含各种自定义的测试指标。
@@ -223,6 +231,8 @@ class MyTester(Tester):
 ```
 
 ---
+
+### 编写脚本
 
 接下来，编写脚本，在其中加载配置文件，创建数据集、模型、训练器和测试器，并执行训练和测试流程。
 
