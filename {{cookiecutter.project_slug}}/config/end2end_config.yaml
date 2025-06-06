@@ -14,10 +14,6 @@ train:
     ids: # 如果使用 "cuda", 可以指定设备 ID 列表
       - 0
       - 1
-  data_split:
-    - 0.8 # 训练集比例
-    - 0.1 # 验证集比例
-    - 0.1 # 测试集比例
   num_workers: 0 # 数据加载工作线程数
   optimizer:
     type: adam # 支持 "adam", "sgd", "adamw", "rmsprop", "adagrad", "adadelta", "adamax", "asgd"

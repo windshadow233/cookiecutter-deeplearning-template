@@ -59,9 +59,11 @@ class Trainer:
 
     def __init__(self,
                  model: Model,
-                 dataset,
+                 train_dataset,
+                 valid_dataset,
                  cfg,
                  exp_dir,
+                 data_collate_fn=None,
                  resume_ckpt=None):
         self.total_cfg = cfg
         self.exp_dir = exp_dir
@@ -101,21 +103,13 @@ class Trainer:
         self.optimizer = self.build_optimizer(model.get_all_params())
 
         self.clip_grad = get_value_from_cfg(self.train_cfg, 'clip_grad', None)
-        data_split = get_value_from_cfg(self.train_cfg, 'data_split', [0.8, 0.1, 0.1])
         batch_size = get_value_from_cfg(self.train_cfg, 'batch_size', 32)
         num_workers = get_value_from_cfg(self.train_cfg, 'num_workers', 0)
-        train_len = int(len(dataset) * data_split[0])
-        valid_len = int(len(dataset) * data_split[1])
-        test_len = len(dataset) - train_len - valid_len
 
-        train, valid, test = random_split(dataset, [train_len, valid_len, test_len])
-
-        train_dataloader = DataLoader(train, batch_size=batch_size, shuffle=True, num_workers=num_workers,
-                                      collate_fn=dataset.data_collate_fn)
-        valid_dataloader = DataLoader(valid, batch_size=batch_size, shuffle=True, num_workers=num_workers,
-                                      collate_fn=dataset.data_collate_fn)
-        test_dataloader = DataLoader(test, batch_size=batch_size, shuffle=True, num_workers=num_workers,
-                                     collate_fn=dataset.data_collate_fn)
+        train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=num_workers,
+                                      collate_fn=data_collate_fn)
+        valid_dataloader = DataLoader(valid_dataset, batch_size=batch_size, shuffle=True, num_workers=num_workers,
+                                      collate_fn=data_collate_fn)
 
         self.scheduler_name, self.scheduler_update, self.scheduler = self.build_scheduler(self.optimizer)
 
@@ -128,11 +122,10 @@ class Trainer:
             **self.accelerator_cfg
         )
 
-        self.train_dataloader, self.valid_dataloader, self.test_dataloader, self.model, self.optimizer = \
+        self.train_dataloader, self.valid_dataloader, self.model, self.optimizer = \
             self.accelerator.prepare(
                 train_dataloader,
                 valid_dataloader,
-                test_dataloader,
                 self.model,
                 self.optimizer
             )
@@ -313,7 +306,7 @@ class Trainer:
         save_current = (epoch + 1) % self.save_freq == 0
         if save_last or save_current or self.scheduler_update == "metric":
             self.model.eval()
-            self.metrics = self.validate_fn(self.valid_dataloader)
+            self.metrics = self.evaluate(self.valid_dataloader)
             for key, value in self.metrics.items():
                 self.logger.log({key: value}, step=self.global_steps)
             self.scheduler_step("metric")
@@ -349,5 +342,5 @@ class Trainer:
         self.logger.info("Training completed.")
 
     @torch.no_grad()
-    def validate_fn(self, dataloader):
+    def evaluate(self, dataloader):
         raise NotImplementedError("validate_fcn must be implemented in subclasses")

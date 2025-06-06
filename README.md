@@ -46,36 +46,28 @@ chmod +x setup.sh
 
 ### 定义数据集
 
-首先，定义数据集，继承自 `dataset.dataset.Dataset` 类，并实现必要的方法：
+首先，定义数据集，继承自 `torch.utils.data.Dataset` 类，并实现必要的方法：
 
 - `__getitem__`：获取单个数据样本。
 - `__len__`：返回数据集的大小。
 
-可重写的方法：
-
-- `data_collate_fn`：用于将一批数据样本合并成一个批次，返回一个 `dict`。
-
-默认的 `data_collate_fn` 方法调用 `torch.utils.data._utils.collate.default_collate`。你可以根据需要重写这个方法来处理更复杂的数据结构。
-
-`data_collate_fn` 方法必须返回一个 `dict`，其键值将作为模型前向传播函数的`**kwargs`使用，默认情况下，这要求
-`__getitem__` 方法返回一个 `dict`。（如重写 `Trainer.train_step` 函数则可忽略此条）
+`__getitem__` 方法必须返回一个 `dict`，其键值将作为模型前向传播函数的`**kwargs`使用。（如重写 `Trainer.train_step` 函数则可忽略此条）
 
 例如：
 
 ```python
-from dataset.dataset import Dataset
+from torch.utils.data import Dataset
 from torchvision import datasets, transforms as T
-import torch
 
 class MyData(Dataset):
-    def __init__(self):
+    def __init__(self, train=True):
         super().__init__()
         transform = T.Compose([
             T.ToTensor(),
             T.Resize((32, 32)),
             T.Normalize((0.5,), (0.5,))
         ])
-        self.dataset = datasets.MNIST(root='./data', train=True, download=True, transform=transform)
+        self.dataset = datasets.MNIST(root='./data', train=train, download=True, transform=transform)
 
     def __getitem__(self, item):
         """
@@ -87,13 +79,6 @@ class MyData(Dataset):
 
     def __len__(self):
         return len(self.dataset)
-
-    def data_collate_fn(self, batch):
-        """
-        默认使用此方法，亦可重写
-        """
-        from torch.utils.data._utils.collate import default_collate
-        return default_collate(batch)
 ```
 
 ---
@@ -135,7 +120,7 @@ class MyModel(Model):
 
 编写训练器类代码，继承自 `engine.trainer.Trainer` 类，并实现必要的方法：
 
-- `validate_fn`: 验证函数，以 `dataloader: torch.utils.data.DataLoader` 为参数，返回一个 `dict`，包含各种自定义的测试指标。
+- `evaluate`: 测试函数，以 `dataloader: torch.utils.data.DataLoader` 为参数，返回一个 `dict`，包含各种自定义的测试指标。
 
 例如：
 
@@ -147,15 +132,17 @@ class MyTrainer(Trainer):
     def __init__(
             self,
             model,
-            dataset,
+            train_dataset,
+            valid_dataset,
             cfg,
             exp_dir,
+            data_collate_fn=None,
             resume_ckpt=None
     ):
-        super().__init__(model, dataset, cfg, exp_dir, resume_ckpt)
+        super().__init__(model, train_dataset, valid_dataset, cfg, exp_dir, data_collate_fn, resume_ckpt)
 
     @torch.no_grad()
-    def validate_fn(self, dataloader):
+    def evaluate(self, dataloader):
         return {
             'val_loss': ...,
             'val_f1': ...,
@@ -211,16 +198,16 @@ class MyTrainer(Trainer):
 
 编写测试器类代码，继承自 `engine.tester.Tester` 类，并实现必要的方法：
 
-- `test_fn`: 测试函数，以 `models.model.Model` 与 `dataloader: torch.utils.data.DataLoader` 为参数，返回一个 `dict`，包含各种自定义的测试指标。
+- `evaluate`: 测试函数，以 `models.model.Model` 与 `dataloader: torch.utils.data.DataLoader` 为参数，返回一个 `dict`，包含各种自定义的测试指标。
 
 ```python
 from engine.tester import Tester
 
 class MyTester(Tester):
-    def __init__(self, model, ckpt_name, dataloader, exp_dir):
-        super().__init__(model, ckpt_name, dataloader, exp_dir)
+    def __init__(self, model, ckpt_name, dataset, exp_dir, data_collate_fn=None):
+        super().__init__(model, ckpt_name, dataset, exp_dir, data_collate_fn)
 
-    def test_fn(self, model, dataloader):
+    def evaluate(self, model, dataloader):
         return {
             'test_loss': ...,
             'test_f1': ...,
@@ -237,6 +224,7 @@ class MyTester(Tester):
 接下来，编写脚本，在其中加载配置文件，创建数据集、模型、训练器和测试器，并执行训练和测试流程。
 
 ```python
+from torch.utils.data import random_split
 from utils.config import load_end2end_cfg, get_value_from_cfg
 from utils.misc import create_exp_dir
 from utils.seed import set_seed
@@ -256,16 +244,21 @@ if __name__ == "__main__":
     seed = get_value_from_cfg(cfg, 'seed', 42)
     set_seed(seed)
     # 初始化数据集
-    dataset = MyData()
+    train_dataset = MyData(train=True)
+    test_dataset = MyData(train=False)
+    dataset_size = len(train_dataset)
+    train_size, valid_size = int(0.8 * dataset_size), dataset_size - int(0.8 * dataset_size)
+    train_dataset, valid_dataset = random_split(train_dataset, [train_size, valid_size])
     # 初始化模型
     model = MyModel()
     # 初始化训练器
     trainer = MyTrainer(
         model=model,
-        dataset=dataset,
+        train_dataset=train_dataset,
+        valid_dataset=valid_dataset,
         cfg=cfg,
         exp_dir=exp_dir,
-        resume_ckpt=None
+        resume_ckpt='last.pt'
     )
     # 运行训练器
     trainer.run()
@@ -277,7 +270,7 @@ if __name__ == "__main__":
     tester = MyTester(
         model=model,
         ckpt_name='best.pt',
-        dataloader=trainer.test_dataloader,
+        dataset=test_dataset,
         exp_dir=exp_dir
     )
     # 运行测试器

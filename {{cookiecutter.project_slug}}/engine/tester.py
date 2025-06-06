@@ -2,19 +2,24 @@ import torch
 import logging
 import os
 from accelerate import Accelerator
+from torch.utils.data import DataLoader
 from omegaconf import OmegaConf
 from models.model import Model
 from utils.config import load_cfg, get_value_from_cfg
 
 
 class Tester:
-    def __init__(self, model: Model, ckpt_name, dataloader, exp_dir):
+    def __init__(self, model: Model, ckpt_name, dataset, exp_dir, data_collate_fn=None):
         self.model = model.eval()
         self.ckpt_name = ckpt_name
-        self.dataloader = dataloader
         self.exp_dir = exp_dir
 
         self.cfg = self._load_config()
+
+        batch_size = get_value_from_cfg(self.cfg, 'train.batch_size', 32)
+        num_workers = get_value_from_cfg(self.cfg, 'train.num_workers', 0)
+
+        self.dataloader = DataLoader(dataset, batch_size=batch_size, num_workers=num_workers, collate_fn=data_collate_fn)
 
         accelerator_cfg = get_value_from_cfg(self.cfg, 'train.accelerator', {})
 
@@ -43,11 +48,10 @@ class Tester:
 
     @torch.no_grad()
     def run(self):
-        metrics = self.test_fn(self.model, self.dataloader)
+        metrics = self.evaluate(self.model, self.dataloader)
         logging.info(f"Test metrics: {metrics}")
 
-    @torch.no_grad()
-    def test_fn(self, model, dataloader):
+    def evaluate(self, model, dataloader):
         raise NotImplementedError(
             "test_fn method should be implemented in the subclass of Tester"
         )

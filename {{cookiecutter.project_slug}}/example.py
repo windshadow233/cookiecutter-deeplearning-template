@@ -2,9 +2,9 @@ import os
 
 import tqdm
 from torch import nn
+from torch.utils.data import Dataset, random_split
 from torchvision import datasets, transforms as T
 from models.model import Model
-from dataset.dataset import Dataset
 from engine.trainer import Trainer
 from engine.tester import Tester
 
@@ -17,14 +17,14 @@ from metrics.metric import AvgMetric
 
 
 class MyData(Dataset):
-    def __init__(self):
+    def __init__(self, train=True):
         super().__init__()
         transform = T.Compose([
             T.ToTensor(),
             T.Resize((32, 32)),
             T.Normalize((0.5,), (0.5,))
         ])
-        self.dataset = datasets.MNIST(root='./data', train=True, download=True, transform=transform)
+        self.dataset = datasets.MNIST(root='./data', train=train, download=True, transform=transform)
 
     def __getitem__(self, item):
         x, y = self.dataset[item]
@@ -77,15 +77,17 @@ class MyTrainer(Trainer):
     def __init__(
             self,
             model,
-            dataset,
+            train_dataset,
+            valid_dataset,
             cfg,
             exp_dir,
-            resume_ckpt
+            data_collate_fn=None,
+            resume_ckpt=None
     ):
-        super().__init__(model, dataset, cfg, exp_dir, resume_ckpt)
+        super().__init__(model, train_dataset, valid_dataset, cfg, exp_dir, data_collate_fn, resume_ckpt)
 
     @torch.no_grad()
-    def validate_fn(self, dataloader):
+    def evaluate(self, dataloader):
         f1 = F1Score()
         recall = Recall()
         precision = Precision()
@@ -118,10 +120,10 @@ class MyTrainer(Trainer):
 
 
 class MyTester(Tester):
-    def __init__(self, model, ckpt_name, dataloader, exp_dir):
-        super().__init__(model, ckpt_name, dataloader, exp_dir)
+    def __init__(self, model, ckpt_name, dataset, exp_dir, data_collate_fn=None):
+        super().__init__(model, ckpt_name, dataset, exp_dir, data_collate_fn)
 
-    def test_fn(self, model, dataloader):
+    def evaluate(self, model, dataloader):
         f1 = F1Score()
         recall = Recall()
         precision = Precision()
@@ -167,13 +169,18 @@ if __name__ == "__main__":
     seed = get_value_from_cfg(cfg, 'seed', 42)
     set_seed(seed)
     # create dataset
-    dataset = MyData()
+    train_dataset = MyData(train=True)
+    test_dataset = MyData(train=False)
+    dataset_size = len(train_dataset)
+    train_size, valid_size = int(0.8 * dataset_size), dataset_size - int(0.8 * dataset_size)
+    train_dataset, valid_dataset = random_split(train_dataset, [train_size, valid_size])
     # initialize model
     model = MyModel()
     # initialize trainer
     trainer = MyTrainer(
         model=model,
-        dataset=dataset,
+        train_dataset=train_dataset,
+        valid_dataset=valid_dataset,
         cfg=cfg,
         exp_dir=exp_dir,
         resume_ckpt='last.pt'
@@ -186,7 +193,7 @@ if __name__ == "__main__":
     tester = MyTester(
         model=model,
         ckpt_name='best.pt',
-        dataloader=trainer.test_dataloader,
+        dataset=test_dataset,
         exp_dir=exp_dir
     )
     tester.run()
