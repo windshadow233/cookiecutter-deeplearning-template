@@ -13,7 +13,8 @@ class Tester:
         self.ckpt_name = ckpt_name
         self.dataloader = dataloader
         self.exp_dir = exp_dir
-        self.cfg = OmegaConf.create({})
+
+        self.cfg = self._load_config()
 
         accelerator_cfg = get_value_from_cfg(self.cfg, 'train.accelerator', {})
 
@@ -27,8 +28,12 @@ class Tester:
 
     def _load_config(self):
         if os.path.exists(cfg_path := os.path.join(self.exp_dir, 'config.yaml')):
-            self.cfg.update(load_cfg(cfg_path))
+            cfg = load_cfg(cfg_path)
             logging.info(f"Configuration loaded from {os.path.join(self.exp_dir, 'config.yaml')}")
+            return cfg
+        else:
+            logging.warning(f"No configuration file found at {cfg_path}, using empty configuration.")
+            return OmegaConf.create({})
 
     def _load_checkpoint(self, ckpt_name: str):
         if not os.path.isfile(ckpt_path := os.path.join(self.exp_dir, 'checkpoints', 'models', ckpt_name)):
@@ -38,11 +43,11 @@ class Tester:
 
     @torch.no_grad()
     def run(self):
-        metrics = self.test_fn(self.dataloader)
+        metrics = self.test_fn(self.model, self.dataloader)
         logging.info(f"Test metrics: {metrics}")
 
     @torch.no_grad()
-    def test_fn(self, dataloader):
+    def test_fn(self, model, dataloader):
         raise NotImplementedError(
             "test_fn method should be implemented in the subclass of Tester"
         )

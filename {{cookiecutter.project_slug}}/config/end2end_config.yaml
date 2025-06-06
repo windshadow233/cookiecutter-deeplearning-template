@@ -56,7 +56,7 @@ train:
       freq: 1 # 最新模型保存频率，单位为 epoch
 
   scheduler:
-    name: none  # 支持：none, step, multistep, constant, linear, exp, poly, cosine, cosine_restart, cyclic, onecycle, plateau
+    name: cosine  # 支持：none, step, multistep, constant, linear, exp, poly, cosine, cosine_restart, cyclic, onecycle, plateau
 
     ########## 根据对应的 name 启用不同的参数配置（根据对应调度器的初始化函数指定参数值） ##########
     params:

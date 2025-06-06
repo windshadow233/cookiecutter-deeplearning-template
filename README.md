@@ -211,7 +211,7 @@ class MyTrainer(Trainer):
 
 编写测试器类代码，继承自 `engine.tester.Tester` 类，并实现必要的方法：
 
-- `test_fn`: 测试函数，以 `dataloader: torch.utils.data.DataLoader` 为参数，返回一个 `dict`，包含各种自定义的测试指标。
+- `test_fn`: 测试函数，以 `models.model.Model` 与 `dataloader: torch.utils.data.DataLoader` 为参数，返回一个 `dict`，包含各种自定义的测试指标。
 
 ```python
 from engine.tester import Tester
@@ -220,7 +220,7 @@ class MyTester(Tester):
     def __init__(self, model, ckpt_name, dataloader, exp_dir):
         super().__init__(model, ckpt_name, dataloader, exp_dir)
 
-    def test_fn(self, dataloader):
+    def test_fn(self, model, dataloader):
         return {
             'test_loss': ...,
             'test_f1': ...,

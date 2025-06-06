@@ -121,7 +121,7 @@ class MyTester(Tester):
     def __init__(self, model, ckpt_name, dataloader, exp_dir):
         super().__init__(model, ckpt_name, dataloader, exp_dir)
 
-    def test_fn(self, dataloader):
+    def test_fn(self, model, dataloader):
         f1 = F1Score()
         recall = Recall()
         precision = Precision()
@@ -130,7 +130,7 @@ class MyTester(Tester):
         for batch in tqdm.tqdm(dataloader, desc='Testing'):
             x, y = batch['image'], batch['label']
             count = len(y)
-            out = self.model(x, y)
+            out = model(x, y)
             logits = out['logits']
             preds = torch.argmax(logits, dim=-1)
             f1.update(preds=preds, targets=y)
@@ -162,7 +162,7 @@ if __name__ == "__main__":
     # create exp dir
     exp_dir = create_exp_dir(cfg, 'exp')
     # or use a specific experiment directory
-    # exp_dir = "runs/exp_20250606_160106"
+    # exp_dir = "runs/exp_20250606_171519"
     # set seed
     seed = get_value_from_cfg(cfg, 'seed', 42)
     set_seed(seed)
