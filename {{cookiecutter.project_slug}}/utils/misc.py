@@ -2,7 +2,6 @@ import torch
 import logging
 import os
 from datetime import datetime
-from pickle import UnpicklingError
 from utils.config import get_value_from_cfg
 
 

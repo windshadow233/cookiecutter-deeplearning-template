@@ -20,7 +20,7 @@ class Tester:
         self._load_checkpoint(ckpt_name)
         self.accelerator = Accelerator(
             device_placement=True,
-            **dict(accelerator_cfg)
+            **OmegaConf.to_container(accelerator_cfg)
         )
 
         self.dataloader, self.model = self.accelerator.prepare(self.dataloader, self.model)
@@ -35,7 +35,6 @@ class Tester:
             logging.warning("No checkpoint found, skipping loading.")
             return
         self.model.load(ckpt_path)
-        logging.info(f"Loaded checkpoint from {ckpt_path}")
 
     @torch.no_grad()
     def run(self):

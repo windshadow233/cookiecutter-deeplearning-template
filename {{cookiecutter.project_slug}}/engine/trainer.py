@@ -37,8 +37,7 @@ class Trainer:
         "cosine_restart": lr_scheduler.CosineAnnealingWarmRestarts,
         "cyclic": lr_scheduler.CyclicLR,
         "onecycle": lr_scheduler.OneCycleLR,
-        "plateau": lr_scheduler.ReduceLROnPlateau,
-        "none": None
+        "plateau": lr_scheduler.ReduceLROnPlateau
     }
     __EPOCH_BASED_SCHEDULERS__ = {
         "step",
@@ -237,8 +236,10 @@ class Trainer:
 
     def build_scheduler(self, optimizer):
         scheduler_cfg = get_value_from_cfg(self.train_cfg, 'scheduler', {})
-        params = get_value_from_cfg(scheduler_cfg, 'params', {})
         name = get_value_from_cfg(scheduler_cfg, 'name', 'none').lower()
+        if name == 'none':
+            return '', '', None
+        params = get_value_from_cfg(scheduler_cfg, 'params', {})
         params = OmegaConf.to_container(params)
         if name in self.__EPOCH_BASED_SCHEDULERS__:
             scheduler_update = 'epoch'
@@ -253,14 +254,14 @@ class Trainer:
             if name in self.__SCHEDULERS__:
                 scheduler_fcn = self.__SCHEDULERS__[name]
                 if scheduler_fcn is None:
-                    return '', scheduler_update, None
+                    return '', '', None
                 return name, scheduler_update, scheduler_fcn(optimizer, **params)
             else:
                 self.logger.warning(f"Unknown scheduler: {name}, will not use a scheduler.")
-                return '', scheduler_update, None
+                return '', '', None
         except Exception as e:
             self.logger.exception(f"Error creating scheduler: {e}, will not use a scheduler.")
-            return '', scheduler_update, None
+            return '', '', None
 
     def scheduler_step(self, mode="step"):
         if self.scheduler_update != mode or not self.scheduler:

@@ -162,7 +162,7 @@ if __name__ == "__main__":
     # create exp dir
     exp_dir = create_exp_dir(cfg, 'exp')
     # or use a specific experiment directory
-    # exp_dir = "runs/exp_20250606_143301"
+    # exp_dir = "runs/exp_20250606_160106"
     # set seed
     seed = get_value_from_cfg(cfg, 'seed', 42)
     set_seed(seed)
