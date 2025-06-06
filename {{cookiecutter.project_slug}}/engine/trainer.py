@@ -3,13 +3,14 @@ import logging
 import os
 import tqdm
 import yaml
+from omegaconf import OmegaConf
 from accelerate import Accelerator
 import torch
 from torch.utils.data import random_split, DataLoader
 from torch import optim
 from torch.optim import lr_scheduler
 from utils.logger import get_logger
-from utils.config import load_cfg
+from utils.config import load_cfg, get_value_from_cfg
 from utils.misc import save_checkpoint, load_checkpoint
 from models.model import Model
 
@@ -68,23 +69,26 @@ class Trainer:
         self._load_config()
         self._save_config()
         self.logger = get_logger(self.total_cfg, exp_dir)
-        self.train_cfg = self.total_cfg.get('train', {})
-        self.saving_cfg = self.train_cfg.get('save', {})
+        self.train_cfg = get_value_from_cfg(self.total_cfg, 'train', {})
+        self.saving_cfg = get_value_from_cfg(self.train_cfg, 'save', {})
 
         self._setup_device()
 
         self.checkpoint_dir = os.path.join(exp_dir, 'checkpoints')
+        self.model_dir = os.path.join(self.checkpoint_dir, 'models')
+        self.train_state_dir = os.path.join(self.checkpoint_dir, 'train_states')
 
         self.metrics = {}
         self.epochs = self.train_cfg['epochs']
         self.current_epoch = 0
         self.global_steps = 0
-        self.save_last = self.saving_cfg.get('save_last', True)
-        self.save_last_freq = self.saving_cfg.get('save_last_freq', 1)
-        self.save_best = self.saving_cfg.get('save_best', True)
-        self.save_freq = self.saving_cfg.get('save_freq', 1)
-        self.save_best_metric = self.saving_cfg.get('save_best_metric', 'val_loss')
-        self.best_mode = self.saving_cfg.get('best_mode', 'min')
+
+        self.save_last = get_value_from_cfg(self.saving_cfg, 'last.enable', True)
+        self.save_last_freq = get_value_from_cfg(self.saving_cfg, 'last.freq', 1)
+        self.save_best = get_value_from_cfg(self.saving_cfg, 'best.enable', True)
+        self.save_freq = get_value_from_cfg(self.saving_cfg, 'best.freq', 1)
+        self.save_best_metric = get_value_from_cfg(self.saving_cfg, 'best.metric', 'val_loss')
+        self.best_mode = get_value_from_cfg(self.saving_cfg, 'best.mode', 'min')
         self.best_metric = None
         if self.save_best:
             if self.best_mode == 'min':
@@ -97,10 +101,10 @@ class Trainer:
         self.model = model
         self.optimizer = self.build_optimizer(model.get_all_params())
 
-        self.clip_grad = self.train_cfg.get('clip_grad', None)
-        data_split = self.train_cfg.get('data_split', [0.8, 0.1, 0.1])
-        batch_size = self.train_cfg.get('batch_size', 32)
-        num_workers = self.train_cfg.get('num_workers', 0)
+        self.clip_grad = get_value_from_cfg(self.train_cfg, 'clip_grad', None)
+        data_split = get_value_from_cfg(self.train_cfg, 'data_split', [0.8, 0.1, 0.1])
+        batch_size = get_value_from_cfg(self.train_cfg, 'batch_size', 32)
+        num_workers = get_value_from_cfg(self.train_cfg, 'num_workers', 0)
         train_len = int(len(dataset) * data_split[0])
         valid_len = int(len(dataset) * data_split[1])
         test_len = len(dataset) - train_len - valid_len
@@ -117,9 +121,9 @@ class Trainer:
         self.scheduler_name, self.scheduler_update, self.scheduler = self.build_scheduler(self.optimizer)
 
         resume_ckpt = resume_ckpt or 'last.pt'
-        self._load_checkpoint(ckpt_name=resume_ckpt)
+        self._load_all(resume_ckpt)
 
-        self.accelerator_cfg = self.train_cfg.get('accelerator', {})
+        self.accelerator_cfg = get_value_from_cfg(self.train_cfg, 'accelerator', {})
         self.accelerator = Accelerator(
             device_placement=True,
             **self.accelerator_cfg
@@ -135,9 +139,9 @@ class Trainer:
             )
 
     def _setup_device(self):
-        device_cfg = self.train_cfg.get('device', {})
-        device_type = device_cfg.get('type', 'auto')
-        device_ids = device_cfg.get('ids', [])
+        device_cfg = get_value_from_cfg(self.train_cfg, 'device', {})
+        device_type = get_value_from_cfg(device_cfg, 'type', 'auto')
+        device_ids = get_value_from_cfg(device_cfg, 'ids', [])
         if device_type == "cpu":
             os.environ["CUDA_VISIBLE_DEVICES"] = ""
         elif device_type == "cuda":
@@ -147,24 +151,26 @@ class Trainer:
 
     def _save_config(self):
         import yaml
-        cfg = copy.deepcopy(self.total_cfg)
         if not os.path.exists(cfg_path := os.path.join(self.exp_dir, 'config.yaml')):
             with open(cfg_path, 'w') as f:
-                yaml.dump(cfg, f, sort_keys=False)
+                yaml.dump(OmegaConf.to_container(self.total_cfg), f, sort_keys=False)
             logging.info(f"Configuration saved to {cfg_path}")
 
     def _load_config(self):
         if os.path.exists(cfg_path := os.path.join(self.exp_dir, 'config.yaml')):
             self.total_cfg.update(load_cfg(cfg_path))
             logging.info(f"Configuration loaded from {os.path.join(self.exp_dir, 'config.yaml')}")
-        self.total_cfg['base_dir'] = str(self.total_cfg.get('base_dir', ''))
-        cfg = yaml.dump(self.total_cfg, sort_keys=False, default_flow_style=False)
-        logging.info(f"\nConfiguration:\n{cfg}")
+        cfg = yaml.dump(OmegaConf.to_container(self.total_cfg), sort_keys=False, default_flow_style=False)
+        logging.debug(f"\nConfiguration:\n{cfg}")
 
-    def _save_checkpoint(self, ckpt_name='last.pt'):
-        ckpt = os.path.join(self.checkpoint_dir, ckpt_name)
+    def _save_model(self, ckpt_name='last.pt'):
+        ckpt = os.path.join(self.model_dir, ckpt_name)
+        model = self.accelerator.unwrap_model(self.model)
+        model.save(ckpt)
+
+    def _save_train_state(self, ckpt_name='last.pt'):
+        ckpt = os.path.join(self.train_state_dir, ckpt_name)
         state_dicts = {
-            'model': self.accelerator.get_state_dict(self.model),
             'optimizer': self.optimizer.state_dict(),
             'scheduler': self.scheduler.state_dict() if self.scheduler else None,
             'current_epoch': self.current_epoch,
@@ -175,32 +181,49 @@ class Trainer:
         }
         save_checkpoint(state_dicts, ckpt)
 
-    def _load_checkpoint(self, ckpt_name='last.pt'):
-        if os.path.exists(last := os.path.join(self.checkpoint_dir, ckpt_name)):
-            self.logger.info(f"Resuming from last checkpoint: {last}")
-            ckpt = load_checkpoint(last)
-            self.model.load_state_dict(ckpt['model'])
-            self.optimizer.load_state_dict(ckpt['optimizer'])
-            if self.scheduler is not None:
-                if ckpt['scheduler'] is not None:
-                    self.scheduler.load_state_dict(ckpt['scheduler'])
-            self.current_epoch = ckpt['current_epoch']
-            self.global_steps = ckpt['steps']
-            self.metrics = ckpt['metrics']
-            self.best_metric = ckpt['best_metric']
-            self.logger.load_state_dict(ckpt['logger'])
+    def _save_all(self, name):
+        self._save_model(name)
+        self._save_train_state(name)
+
+    def _load_model(self, ckpt_name='last.pt'):
+        if os.path.exists(ckpt := os.path.join(self.model_dir, ckpt_name)):
+            self.logger.info(f"Resuming from last checkpoint: {ckpt}")
+            self.model.load(ckpt)
         else:
-            if os.path.isdir(self.checkpoint_dir):
+            if os.path.isdir(self.model_dir):
                 self.logger.warning(f"Checkpoint '{ckpt_name}' not found.")
             else:
-                os.makedirs(self.checkpoint_dir)
+                os.makedirs(self.model_dir)
+
+    def _load_train_state(self, ckpt_name='last.pt'):
+        if os.path.exists(ckpt := os.path.join(self.train_state_dir, ckpt_name)):
+            self.logger.info(f"Resuming training state from: {ckpt}")
+            state_dicts = load_checkpoint(ckpt)
+            self.optimizer.load_state_dict(state_dicts['optimizer'])
+            if self.scheduler is not None and state_dicts['scheduler'] is not None:
+                self.scheduler.load_state_dict(state_dicts['scheduler'])
+            self.current_epoch = state_dicts.get('current_epoch', 0)
+            self.global_steps = state_dicts.get('steps', 0)
+            self.metrics = state_dicts.get('metrics', {})
+            self.best_metric = state_dicts.get('best_metric', None)
+            self.logger.load_state_dict(state_dicts['logger'])
+        else:
+            if os.path.isdir(self.train_state_dir):
+                self.logger.warning(f"Training state '{ckpt_name}' not found.")
+            else:
+                os.makedirs(self.train_state_dir)
+
+    def _load_all(self, name):
+        self._load_model(name)
+        self._load_train_state(name)
 
     def build_optimizer(self, params):
-        optimizer_cfg = self.train_cfg.get('optimizer', {})
-        optimizer_type = optimizer_cfg.get('type', 'adam')
-        learning_rate = optimizer_cfg.get('lr', 1e-5)
-        weight_decay = optimizer_cfg.get('weight_decay', 0.0)
-        optim_params = optimizer_cfg.get('params', {})
+        optimizer_cfg = get_value_from_cfg(self.train_cfg, 'optimizer', {})
+        optimizer_type = get_value_from_cfg(optimizer_cfg, 'type', 'adam')
+        learning_rate = get_value_from_cfg(optimizer_cfg, 'lr', 1e-5)
+        weight_decay = get_value_from_cfg(optimizer_cfg, 'weight_decay', 0.0)
+        optim_params = get_value_from_cfg(optimizer_cfg, 'params', {})
+        optim_params = OmegaConf.to_container(optim_params)
 
         optimizer = self.__OPTIMIZERS__.get(optimizer_type.lower())
         if optimizer is None:
@@ -213,9 +236,10 @@ class Trainer:
         )
 
     def build_scheduler(self, optimizer):
-        scheduler_cfg = self.train_cfg.get('scheduler', {})
-        params = scheduler_cfg.get("params", {})
-        name = scheduler_cfg.get("name", "none").lower()
+        scheduler_cfg = get_value_from_cfg(self.train_cfg, 'scheduler', {})
+        params = get_value_from_cfg(scheduler_cfg, 'params', {})
+        name = get_value_from_cfg(scheduler_cfg, 'name', 'none').lower()
+        params = OmegaConf.to_container(params)
         if name in self.__EPOCH_BASED_SCHEDULERS__:
             scheduler_update = 'epoch'
         elif name in self.__STEP_BASED_SCHEDULERS__:
@@ -297,17 +321,17 @@ class Trainer:
                 if self.best_mode == 'min':
                     if (new_best := self.metrics[self.save_best_metric]) < self.best_metric:
                         self.best_metric = new_best
-                        self._save_checkpoint('best.pt')
+                        self._save_all('best.pt')
                         self.logger.info(f"New best metric ({self.save_best_metric}): {new_best:.4f}")
                 else:
                     if (new_best := self.metrics[self.save_best_metric]) > self.best_metric:
                         self.best_metric = new_best
-                        self._save_checkpoint('best.pt')
+                        self._save_all('best.pt')
                         self.logger.info(f"New best metric ({self.save_best_metric}): {new_best:.4f}")
             if save_last:
-                self._save_checkpoint('last.pt')
+                self._save_all('last.pt')
             if save_current:
-                self._save_checkpoint(f'ckpt_epoch_{epoch + 1}.pt')
+                self._save_all(f'ckpt_epoch_{epoch + 1}.pt')
 
     def run(self):
         self.logger.info("Training started.")

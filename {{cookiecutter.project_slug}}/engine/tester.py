@@ -2,21 +2,25 @@ import torch
 import logging
 import os
 from accelerate import Accelerator
-from utils.config import load_cfg
+from omegaconf import OmegaConf
+from models.model import Model
+from utils.config import load_cfg, get_value_from_cfg
 
 
 class Tester:
-    def __init__(self, model, ckpt_name, dataloader, exp_dir):
+    def __init__(self, model: Model, ckpt_name, dataloader, exp_dir):
         self.model = model.eval()
         self.ckpt_name = ckpt_name
         self.dataloader = dataloader
         self.exp_dir = exp_dir
-        self.cfg = {}
+        self.cfg = OmegaConf.create({})
+
+        accelerator_cfg = get_value_from_cfg(self.cfg, 'train.accelerator', {})
 
         self._load_checkpoint(ckpt_name)
         self.accelerator = Accelerator(
             device_placement=True,
-            **self.cfg.get('train', {}).get('accelerator', {})
+            **dict(accelerator_cfg)
         )
 
         self.dataloader, self.model = self.accelerator.prepare(self.dataloader, self.model)
@@ -27,12 +31,10 @@ class Tester:
             logging.info(f"Configuration loaded from {os.path.join(self.exp_dir, 'config.yaml')}")
 
     def _load_checkpoint(self, ckpt_name: str):
-        ckpt_path = os.path.join(self.exp_dir, 'checkpoints', ckpt_name)
-        if not os.path.isfile(ckpt_path):
+        if not os.path.isfile(ckpt_path := os.path.join(self.exp_dir, 'checkpoints', 'models', ckpt_name)):
             logging.warning("No checkpoint found, skipping loading.")
             return
-        checkpoint = torch.load(ckpt_path, map_location="cpu")
-        self.model.load_state_dict(checkpoint["model"])
+        self.model.load(ckpt_path)
         logging.info(f"Loaded checkpoint from {ckpt_path}")
 
     @torch.no_grad()

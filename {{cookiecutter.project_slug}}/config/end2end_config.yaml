@@ -7,7 +7,7 @@ logger:
   level: INFO # 日志级别，支持 DEBUG, INFO, WARNING, ERROR, CRITICAL
 train:
   batch_size: 32
-  epochs: 10
+  epochs: 5
   clip_grad: 1.0 # 梯度裁剪
   device:
     type: auto # 支持 "cpu", "cuda", "auto"
@@ -46,12 +46,15 @@ train:
     mixed_precision: "no" # 支持 "no", "fp16", "bf16"
     split_batches: true
   save:
-    save_best: true # 是否保存最好的模型（以save_freq为测试频率）
-    save_freq: 2 # 模型保存频率，单位为 epoch
-    save_best_metric: val_acc # 最佳模型的指标, 支持 "val_loss", "val_acc" 等，取决于 validate_fcn 函数的返回值
-    best_mode: max # 最佳模型的指标模式，支持 "min", "max"
-    save_last: true # 是否保存最新的模型 (如需要断点续训则必须开启)
-    save_last_freq: 1 # 最新模型保存频率，单位为 epoch
+    best:
+      enable: true # 是否保存最佳模型
+      metric: val_acc  # 最佳模型的指标, 支持 "val_loss", "val_acc" 等，取决于 validate_fcn 函数的返回值
+      mode: max # 最佳模型的指标模式，支持 "min", "max"
+      freq: 2 # 最佳模型保存频率，单位为 epoch
+    last:
+      enable: true # 是否保存最新模型
+      freq: 1 # 最新模型保存频率，单位为 epoch
+
   scheduler:
     name: cosine  # 支持：none, step, multistep, constant, linear, exp, poly, cosine, cosine_restart, cyclic, onecycle, plateau
 

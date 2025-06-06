@@ -6,6 +6,7 @@ from collections import defaultdict
 import matplotlib.pyplot as plt
 from matplotlib.ticker import MaxNLocator
 import math
+from utils.config import get_value_from_cfg
 
 
 class ColorFormatter(logging.Formatter):
@@ -25,7 +26,7 @@ class ColorFormatter(logging.Formatter):
 
 
 def init_logger(cfg):
-    level = cfg.get("logger", {}).get("level", "INFO").upper()
+    level = get_value_from_cfg(cfg, "logger.level", "INFO").upper()
     logger = logging.getLogger()
     logger.setLevel(getattr(logging, level.upper(), logging.INFO))
 
@@ -40,7 +41,7 @@ def init_logger(cfg):
 
 class Logger:
     def __init__(self, cfg):
-        level_str = cfg.get("logger", {}).get("level", "INFO").upper()
+        level_str = get_value_from_cfg(cfg, "logger.level", "INFO").upper()
         self.logger = logging.getLogger()
         self.logger.setLevel(getattr(logging, level_str, logging.INFO))
 
@@ -139,11 +140,10 @@ class SimpleLogger(Logger):
 
 
 def get_logger(cfg, exp_dir):
-    init_logger(cfg)
-    logger_type = cfg.get("logger", {}).get("type", "simple").lower()
+    logger_type = get_value_from_cfg(cfg, "logger.type", "simple").lower()
     if logger_type == "tensorboard":
-        log_dir: str = cfg.get('logger').get("path", "logs")
-        log_dir = os.path.join(exp_dir, log_dir)
+        log_dir = get_value_from_cfg(cfg, "logger.path", "logs")
+        log_dir: str = os.path.join(exp_dir, log_dir)
         tb_logger = SummaryWriter(log_dir=log_dir)
         return TensorboardLogger(cfg, tb_logger)
     elif logger_type == "simple":

@@ -48,6 +48,9 @@ chmod +x setup.sh
 
 - `__getitem__`：获取单个数据样本。
 - `__len__`：返回数据集的大小。
+
+可重写的方法：
+
 - `data_collate_fn`：用于将一批数据样本合并成一个批次，返回一个 `dict`。
 
 默认的 `data_collate_fn` 方法调用 `torch.utils.data._utils.collate.default_collate`。你可以根据需要重写这个方法来处理更复杂的数据结构。
@@ -116,6 +119,12 @@ class MyModel(Model):
         }
 ```
 
+可重写的方法：
+
+- `get_all_params`：返回模型的训练参数，默认返回 `list(self.parameters())`。
+- `save`: 保存模型，默认使用 `torch.save` 保存模型的 `state_dict`。
+- `load`: 加载模型，默认使用 `torch.load` 加载模型的 `state_dict`。
+
 ---
 
 编写训练器类代码，继承自 `engine.trainer.Trainer` 类，并实现必要的方法：
@@ -155,16 +164,19 @@ class MyTrainer(Trainer):
 ```yaml
 train:
   save:
-    save_best_metric: val_f1
+    best:
+      metric: val_f1
   scheduler:
     name: plateau
     params:
       metric: val_acc  # plateau 监控指标，支持 "val_loss", "val_acc" 等
 ```
 
-`train.save.save_best_metric` 及 `train.scheduler.params.metric` 的值必须包含于 `validate_fn` 方法返回的字典键名中。
+`train.save.best.metric` 及 `train.scheduler.params.metric` 的值必须包含于 `validate_fn` 方法返回的字典键名中。
 
-可重写 `Trainer.train_step` 函数：
+可重写的方法：
+
+- `Trainer.train_step`: 单次训练步骤，接收模型、数据、优化器和加速器实例作为参数，返回一个包含各种自定义日志记录指标的字典（也可什么都不返回）。
 
 ```python
 class MyTrainer(Trainer):
@@ -215,21 +227,23 @@ class MyTester(Tester):
 接下来，编写脚本，在其中加载配置文件，创建数据集、模型、训练器和测试器，并执行训练和测试流程。
 
 ```python
-from utils.config import load_end2end_cfg
+from utils.config import load_end2end_cfg, get_value_from_cfg
 from utils.misc import create_exp_dir
 from utils.seed import set_seed
-from utils.logger import SimpleLogger
+from utils.logger import init_logger, SimpleLogger
 import os
 
 if __name__ == "__main__":
     # 加载配置文件
     cfg = load_end2end_cfg()
+    # 初始化日志记录器
+    init_logger(cfg)
     # 创建一个新的实验目录
     exp_dir = create_exp_dir(cfg, 'exp')
     # 或者使用指定的已存在的实验目录（从上一个保存断点（或通过 Trainer 的 resume_ckpt 参数指定）继续训练）
     # exp_dir = "runs/exp_20250604_152711"
     # 设置随机种子
-    seed = cfg.get('seed', 42)
+    seed = get_value_from_cfg(cfg, 'seed', 42)
     set_seed(seed)
     # 初始化数据集
     dataset = MyData()

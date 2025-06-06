@@ -1,4 +1,5 @@
 from torch import nn
+from utils.misc import load_checkpoint, save_checkpoint
 
 
 class Model(nn.Module):
@@ -41,3 +42,21 @@ class Model(nn.Module):
             list: List of all model parameters.
         """
         return list(self.parameters())
+
+    def save(self, path):
+        """
+        Save the model.
+
+        Args:
+            path (str): Path to save the model checkpoint.
+        """
+        save_checkpoint(self.state_dict(), path)
+
+    def load(self, path):
+        """
+        Load the model.
+
+        Args:
+            path (str): Path to load the model checkpoint from.
+        """
+        self.load_state_dict(load_checkpoint(path))

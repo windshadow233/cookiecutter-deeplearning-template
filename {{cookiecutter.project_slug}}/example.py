@@ -8,10 +8,10 @@ from dataset.dataset import Dataset
 from engine.trainer import Trainer
 from engine.tester import Tester
 
-from utils.config import load_end2end_cfg
+from utils.config import load_end2end_cfg, get_value_from_cfg
 from utils.misc import create_exp_dir
 from utils.seed import set_seed
-from utils.logger import SimpleLogger
+from utils.logger import init_logger, SimpleLogger
 from metrics.classification import *
 from metrics.metric import AvgMetric
 
@@ -157,12 +157,14 @@ class MyTester(Tester):
 if __name__ == "__main__":
     # load configuration
     cfg = load_end2end_cfg()
+    # initialize logging
+    init_logger(cfg)
     # create exp dir
     exp_dir = create_exp_dir(cfg, 'exp')
     # or use a specific experiment directory
-    # exp_dir = "runs/exp_20250606_073021"
+    # exp_dir = "runs/exp_20250606_143301"
     # set seed
-    seed = cfg.get('seed', 42)
+    seed = get_value_from_cfg(cfg, 'seed', 42)
     set_seed(seed)
     # create dataset
     dataset = MyData()
