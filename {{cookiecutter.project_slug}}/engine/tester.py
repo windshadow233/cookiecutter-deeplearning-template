@@ -50,6 +50,7 @@ class Tester:
             logging.warning("No checkpoint found, skipping loading.")
             return
         self.model.load(ckpt_path)
+        logging.info(f"Checkpoint loaded from {ckpt_path}")
 
     @torch.no_grad()
     def run(self):

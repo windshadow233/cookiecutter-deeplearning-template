@@ -179,8 +179,8 @@ class Trainer:
 
     def _load_model(self, ckpt_name='last.pt'):
         if os.path.exists(ckpt := os.path.join(self.model_dir, ckpt_name)):
-            self.logger.info(f"Resuming from last checkpoint: {ckpt}")
             self.model.load(ckpt)
+            self.logger.info(f"Resuming from last checkpoint: {ckpt}")
         else:
             if os.path.isdir(self.model_dir):
                 self.logger.warning(f"Checkpoint '{ckpt_name}' not found.")
@@ -189,7 +189,6 @@ class Trainer:
 
     def _load_train_state(self, ckpt_name='last.pt'):
         if os.path.exists(ckpt := os.path.join(self.train_state_dir, ckpt_name)):
-            self.logger.info(f"Resuming training state from: {ckpt}")
             state_dicts = load_checkpoint(ckpt)
             self.optimizer.load_state_dict(state_dicts['optimizer'])
             if self.scheduler is not None and state_dicts['scheduler'] is not None:
@@ -199,6 +198,7 @@ class Trainer:
             self.metrics = state_dicts.get('metrics', {})
             self.best_metric = state_dicts.get('best_metric', None)
             self.logger.load_state_dict(state_dicts['logger'])
+            self.logger.info(f"Resuming training state from: {ckpt}")
         else:
             if os.path.isdir(self.train_state_dir):
                 self.logger.warning(f"Training state '{ckpt_name}' not found.")
