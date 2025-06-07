@@ -41,6 +41,7 @@ train:
     gradient_accumulation_steps: 1 # 梯度累积步数
     mixed_precision: "no" # 支持 "no", "fp16", "bf16"
     split_batches: true
+  resume_ckpt: last.pt
   save:
     best:
       enable: true # 是否保存最佳模型

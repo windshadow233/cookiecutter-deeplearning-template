@@ -1,4 +1,3 @@
-import copy
 import logging
 import os
 import tqdm
@@ -6,11 +5,11 @@ import yaml
 from omegaconf import OmegaConf
 from accelerate import Accelerator
 import torch
-from torch.utils.data import random_split, DataLoader
+from torch.utils.data import DataLoader
 from torch import optim
 from torch.optim import lr_scheduler
 from utils.logger import get_logger
-from utils.config import load_cfg, get_value_from_cfg
+from utils.config import load_cfg, get_config_value
 from utils.misc import save_checkpoint, load_checkpoint
 from models.model import Model
 
@@ -63,15 +62,14 @@ class Trainer:
                  valid_dataset,
                  cfg,
                  exp_dir,
-                 data_collate_fn=None,
-                 resume_ckpt=None):
+                 data_collate_fn=None):
         self.total_cfg = cfg
         self.exp_dir = exp_dir
         self._load_config()
         self._save_config()
         self.logger = get_logger(self.total_cfg, exp_dir)
-        self.train_cfg = get_value_from_cfg(self.total_cfg, 'train', {})
-        self.saving_cfg = get_value_from_cfg(self.train_cfg, 'save', {})
+        self.train_cfg = get_config_value(self.total_cfg, 'train', {})
+        self.saving_cfg = get_config_value(self.train_cfg, 'save', {})
 
         self._setup_device()
 
@@ -84,12 +82,12 @@ class Trainer:
         self.current_epoch = 0
         self.global_steps = 0
 
-        self.save_last = get_value_from_cfg(self.saving_cfg, 'last.enable', True)
-        self.save_last_freq = get_value_from_cfg(self.saving_cfg, 'last.freq', 1)
-        self.save_best = get_value_from_cfg(self.saving_cfg, 'best.enable', True)
-        self.save_freq = get_value_from_cfg(self.saving_cfg, 'best.freq', 1)
-        self.save_best_metric = get_value_from_cfg(self.saving_cfg, 'best.metric', 'val_loss')
-        self.best_mode = get_value_from_cfg(self.saving_cfg, 'best.mode', 'min')
+        self.save_last = get_config_value(self.saving_cfg, 'last.enable', True)
+        self.save_last_freq = get_config_value(self.saving_cfg, 'last.freq', 1)
+        self.save_best = get_config_value(self.saving_cfg, 'best.enable', True)
+        self.save_freq = get_config_value(self.saving_cfg, 'best.freq', 1)
+        self.save_best_metric = get_config_value(self.saving_cfg, 'best.metric', 'val_loss')
+        self.best_mode = get_config_value(self.saving_cfg, 'best.mode', 'min')
         self.best_metric = None
         if self.save_best:
             if self.best_mode == 'min':
@@ -102,9 +100,9 @@ class Trainer:
         self.model = model
         self.optimizer = self.build_optimizer(model.get_all_params())
 
-        self.clip_grad = get_value_from_cfg(self.train_cfg, 'clip_grad', None)
-        batch_size = get_value_from_cfg(self.train_cfg, 'batch_size', 32)
-        num_workers = get_value_from_cfg(self.train_cfg, 'num_workers', 0)
+        self.clip_grad = get_config_value(self.train_cfg, 'clip_grad', None)
+        batch_size = get_config_value(self.train_cfg, 'batch_size', 32)
+        num_workers = get_config_value(self.train_cfg, 'num_workers', 0)
 
         train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=num_workers,
                                       collate_fn=data_collate_fn)
@@ -113,10 +111,10 @@ class Trainer:
 
         self.scheduler_name, self.scheduler_update, self.scheduler = self.build_scheduler(self.optimizer)
 
-        resume_ckpt = resume_ckpt or 'last.pt'
+        resume_ckpt = get_config_value(self.train_cfg, 'resume_ckpt', 'last.pt')
         self._load_all(resume_ckpt)
 
-        self.accelerator_cfg = get_value_from_cfg(self.train_cfg, 'accelerator', {})
+        self.accelerator_cfg = get_config_value(self.train_cfg, 'accelerator', {})
         self.accelerator = Accelerator(
             device_placement=True,
             **self.accelerator_cfg
@@ -131,9 +129,9 @@ class Trainer:
             )
 
     def _setup_device(self):
-        device_cfg = get_value_from_cfg(self.train_cfg, 'device', {})
-        device_type = get_value_from_cfg(device_cfg, 'type', 'auto')
-        device_ids = get_value_from_cfg(device_cfg, 'ids', [])
+        device_cfg = get_config_value(self.train_cfg, 'device', {})
+        device_type = get_config_value(device_cfg, 'type', 'auto')
+        device_ids = get_config_value(device_cfg, 'ids', [])
         if device_type == "cpu":
             os.environ["CUDA_VISIBLE_DEVICES"] = ""
         elif device_type == "cuda":
@@ -210,11 +208,11 @@ class Trainer:
         self._load_train_state(name)
 
     def build_optimizer(self, params):
-        optimizer_cfg = get_value_from_cfg(self.train_cfg, 'optimizer', {})
-        optimizer_type = get_value_from_cfg(optimizer_cfg, 'type', 'adam')
-        learning_rate = get_value_from_cfg(optimizer_cfg, 'lr', 1e-5)
-        weight_decay = get_value_from_cfg(optimizer_cfg, 'weight_decay', 0.0)
-        optim_params = get_value_from_cfg(optimizer_cfg, 'params', {})
+        optimizer_cfg = get_config_value(self.train_cfg, 'optimizer', {})
+        optimizer_type = get_config_value(optimizer_cfg, 'type', 'adam')
+        learning_rate = get_config_value(optimizer_cfg, 'lr', 1e-5)
+        weight_decay = get_config_value(optimizer_cfg, 'weight_decay', 0.0)
+        optim_params = get_config_value(optimizer_cfg, 'params', {})
         optim_params = OmegaConf.to_container(optim_params)
 
         optimizer = self.__OPTIMIZERS__.get(optimizer_type.lower())
@@ -228,11 +226,11 @@ class Trainer:
         )
 
     def build_scheduler(self, optimizer):
-        scheduler_cfg = get_value_from_cfg(self.train_cfg, 'scheduler', {})
-        name = get_value_from_cfg(scheduler_cfg, 'name', 'none').lower()
+        scheduler_cfg = get_config_value(self.train_cfg, 'scheduler', {})
+        name = get_config_value(scheduler_cfg, 'name', 'none').lower()
         if name == 'none':
             return '', '', None
-        params = get_value_from_cfg(scheduler_cfg, 'params', {})
+        params = get_config_value(scheduler_cfg, 'params', {})
         params = OmegaConf.to_container(params)
         if name in self.__EPOCH_BASED_SCHEDULERS__:
             scheduler_update = 'epoch'
@@ -305,8 +303,7 @@ class Trainer:
         save_best = self.save_best
         save_current = (epoch + 1) % self.save_freq == 0
         if save_last or save_current or self.scheduler_update == "metric":
-            self.model.eval()
-            self.metrics = self.evaluate(self.valid_dataloader)
+            self.metrics = self._evaluate()
             for key, value in self.metrics.items():
                 self.logger.log({key: value}, step=self.global_steps)
             self.scheduler_step("metric")
@@ -342,5 +339,9 @@ class Trainer:
         self.logger.info("Training completed.")
 
     @torch.no_grad()
-    def evaluate(self, dataloader):
-        raise NotImplementedError("validate_fcn must be implemented in subclasses")
+    def _evaluate(self):
+        self.model.eval()
+        return self.evaluate(self.model, self.valid_dataloader)
+
+    def evaluate(self, model: Model, dataloader: DataLoader):
+        raise NotImplementedError("evaluate must be implemented in subclasses")

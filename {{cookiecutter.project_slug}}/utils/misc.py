@@ -2,7 +2,7 @@ import torch
 import logging
 import os
 from datetime import datetime
-from utils.config import get_value_from_cfg
+from utils.config import get_config_value
 
 
 def save_checkpoint(obj, file_path):
@@ -33,7 +33,7 @@ def load_checkpoint(file_path):
 
 def create_exp_dir(cfg, exp_dir_base_name):
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    exp_folder = get_value_from_cfg(cfg, "exp.path", "runs")
+    exp_folder = get_config_value(cfg, "exp.path", "runs")
     exp_folder = os.path.join(exp_folder, f"{exp_dir_base_name}_{timestamp}")
     os.makedirs(exp_folder, exist_ok=True)
     logging.info(f"Experiment folder created at {exp_folder}")

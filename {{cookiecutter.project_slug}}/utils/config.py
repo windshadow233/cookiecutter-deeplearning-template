@@ -29,7 +29,7 @@ def load_cfg(config_path: str = "config/end2end_config.yaml") -> DictConfig:
     return OmegaConf.create(cfg)
 
 
-def get_value_from_cfg(cfg: DictConfig, keys: str, default=None):
+def get_config_value(cfg: DictConfig, keys: str, default=None):
     """
     从配置字典中获取嵌套的值。
     Args:

@@ -120,7 +120,7 @@ class MyModel(Model):
 
 编写训练器类代码，继承自 `engine.trainer.Trainer` 类，并实现必要的方法：
 
-- `evaluate`: 测试函数，以 `dataloader: torch.utils.data.DataLoader` 为参数，返回一个 `dict`，包含各种自定义的测试指标。
+- `evaluate`: 测试函数，以 `models.model.Model` 和 `dataloader: torch.utils.data.DataLoader` 为参数，返回一个 `dict`，包含各种自定义的测试指标。
 
 例如：
 
@@ -141,8 +141,7 @@ class MyTrainer(Trainer):
     ):
         super().__init__(model, train_dataset, valid_dataset, cfg, exp_dir, data_collate_fn, resume_ckpt)
 
-    @torch.no_grad()
-    def evaluate(self, dataloader):
+    def evaluate(self, model, dataloader):
         return {
             'val_loss': ...,
             'val_f1': ...,
@@ -225,7 +224,7 @@ class MyTester(Tester):
 
 ```python
 from torch.utils.data import random_split
-from utils.config import load_end2end_cfg, get_value_from_cfg
+from utils.config import load_end2end_cfg, get_config_value
 from utils.misc import create_exp_dir
 from utils.seed import set_seed
 from utils.logger import init_logger, SimpleLogger
@@ -241,7 +240,7 @@ if __name__ == "__main__":
     # 或者使用指定的已存在的实验目录（从上一个保存断点（或通过 Trainer 的 resume_ckpt 参数指定）继续训练）
     # exp_dir = "runs/exp_20250604_152711"
     # 设置随机种子
-    seed = get_value_from_cfg(cfg, 'seed', 42)
+    seed = get_config_value(cfg, 'seed', 42)
     set_seed(seed)
     # 初始化数据集
     train_dataset = MyData(train=True)

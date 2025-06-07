@@ -8,7 +8,7 @@ from models.model import Model
 from engine.trainer import Trainer
 from engine.tester import Tester
 
-from utils.config import load_end2end_cfg, get_value_from_cfg
+from utils.config import load_end2end_cfg, get_config_value
 from utils.misc import create_exp_dir
 from utils.seed import set_seed
 from utils.logger import init_logger, SimpleLogger
@@ -81,13 +81,12 @@ class MyTrainer(Trainer):
             valid_dataset,
             cfg,
             exp_dir,
-            data_collate_fn=None,
-            resume_ckpt=None
+            data_collate_fn=None
     ):
-        super().__init__(model, train_dataset, valid_dataset, cfg, exp_dir, data_collate_fn, resume_ckpt)
+        super().__init__(model, train_dataset, valid_dataset, cfg, exp_dir, data_collate_fn)
 
     @torch.no_grad()
-    def evaluate(self, dataloader):
+    def evaluate(self, model, dataloader):
         f1 = F1Score()
         recall = Recall()
         precision = Precision()
@@ -96,7 +95,7 @@ class MyTrainer(Trainer):
         for batch in tqdm.tqdm(dataloader, desc='Validation'):
             x, y = batch['image'], batch['label']
             count = len(y)
-            out = self.model(x, y)
+            out = model(x, y)
             logits = out['logits']
             preds = torch.argmax(logits, dim=-1)
             f1.update(preds=preds, targets=y)
@@ -164,9 +163,9 @@ if __name__ == "__main__":
     # create exp dir
     exp_dir = create_exp_dir(cfg, 'exp')
     # or use a specific experiment directory
-    # exp_dir = "runs/exp_20250606_171519"
+    # exp_dir = "runs/exp_20250607_091355"
     # set seed
-    seed = get_value_from_cfg(cfg, 'seed', 42)
+    seed = get_config_value(cfg, 'seed', 42)
     set_seed(seed)
     # create dataset
     train_dataset = MyData(train=True)
@@ -182,8 +181,7 @@ if __name__ == "__main__":
         train_dataset=train_dataset,
         valid_dataset=valid_dataset,
         cfg=cfg,
-        exp_dir=exp_dir,
-        resume_ckpt='last.pt'
+        exp_dir=exp_dir
     )
     trainer.run()
 

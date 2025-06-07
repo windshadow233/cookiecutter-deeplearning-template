@@ -3,4 +3,5 @@
 /**/__pycache__/
 {{cookiecutter.project_slug}}/data/
 {{cookiecutter.project_slug}}/runs/
+{{cookiecutter.project_slug}}/main.py
 /**/.DS_Store
