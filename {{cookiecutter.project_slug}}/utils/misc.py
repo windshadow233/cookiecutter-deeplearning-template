@@ -14,7 +14,6 @@ def save_checkpoint(obj, file_path):
         file_path: The file path to save the checkpoint.
     """
     torch.save(obj, file_path)
-    logging.info(f"Checkpoint saved at {file_path}")
 
 
 def load_checkpoint(file_path):
@@ -27,7 +26,6 @@ def load_checkpoint(file_path):
         The loaded model.
     """
     obj = torch.load(file_path, map_location="cpu")
-    logging.info(f"Checkpoint loaded from {file_path}")
     return obj
 
 

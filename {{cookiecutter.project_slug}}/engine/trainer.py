@@ -157,6 +157,7 @@ class Trainer:
         ckpt = os.path.join(self.model_dir, ckpt_name)
         model = self.accelerator.unwrap_model(self.model)
         model.save(ckpt)
+        self.logger.info(f"Model saved to {ckpt}")
 
     def _save_train_state(self, ckpt_name='last.pt'):
         ckpt = os.path.join(self.train_state_dir, ckpt_name)
@@ -170,6 +171,7 @@ class Trainer:
             'logger': self.logger.state_dict()
         }
         save_checkpoint(state_dicts, ckpt)
+        self.logger.info(f"Training state saved to {ckpt}")
 
     def _save_all(self, name):
         self._save_model(name)
