@@ -43,14 +43,13 @@ train:
     split_batches: true
   resume_ckpt: last.pt
   save:
+    every: 1 # 模型保存频率，单位为 epoch，为 0 则不保存
     best:
-      enable: true # 是否保存最佳模型
+      every: 1 # 最佳模型保存频率，单位为 epoch，为 0 则不保存
       metric: val_acc  # 最佳模型的指标, 支持 "val_loss", "val_acc" 等，取决于 validate_fcn 函数的返回值
       mode: max # 最佳模型的指标模式，支持 "min", "max"
-      freq: 2 # 最佳模型保存频率，单位为 epoch
     last:
-      enable: true # 是否保存最新模型
-      freq: 1 # 最新模型保存频率，单位为 epoch
+      every: 1 # 最新模型保存频率，单位为 epoch，为 0 则不保存
 
   scheduler:
     name: cosine  # 支持：none, step, multistep, constant, linear, exp, poly, cosine, cosine_restart, cyclic, onecycle, plateau

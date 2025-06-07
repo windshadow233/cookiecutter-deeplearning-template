@@ -82,14 +82,13 @@ class Trainer:
         self.current_epoch = 0
         self.global_steps = 0
 
-        self.save_last = get_config_value(self.saving_cfg, 'last.enable', True)
-        self.save_last_freq = get_config_value(self.saving_cfg, 'last.freq', 1)
-        self.save_best = get_config_value(self.saving_cfg, 'best.enable', True)
-        self.save_freq = get_config_value(self.saving_cfg, 'best.freq', 1)
+        self.save_every = get_config_value(self.saving_cfg, 'every', 1)
+        self.save_last_every = get_config_value(self.saving_cfg, 'last.every', 1)
+        self.save_best_every = get_config_value(self.saving_cfg, 'best.every', 1)
         self.save_best_metric = get_config_value(self.saving_cfg, 'best.metric', 'val_loss')
         self.best_mode = get_config_value(self.saving_cfg, 'best.mode', 'min')
         self.best_metric = None
-        if self.save_best:
+        if self.save_best_every > 0:
             if self.best_mode == 'min':
                 self.best_metric = float('inf')
             elif self.best_mode == 'max':
@@ -301,9 +300,9 @@ class Trainer:
         return log_items
 
     def _save(self, epoch):
-        save_last = self.save_last and (epoch + 1) % self.save_last_freq == 0
-        save_best = self.save_best
-        save_current = (epoch + 1) % self.save_freq == 0
+        save_last = self.save_last_every > 0 and (epoch + 1) % self.save_last_every == 0
+        save_best = self.save_best_every > 0 and (epoch + 1) % self.save_best_every == 0
+        save_current = self.save_every > 0 and (epoch + 1) % self.save_every == 0
         if save_last or save_current or self.scheduler_update == "metric":
             self.metrics = self._evaluate()
             for key, value in self.metrics.items():
