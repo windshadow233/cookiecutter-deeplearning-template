@@ -4,7 +4,7 @@ import tqdm
 from torch import nn
 from torch.utils.data import Dataset, random_split
 from torchvision import datasets, transforms as T
-from models.model import Model
+from model.models import Model
 from engine.trainer import Trainer
 from engine.tester import Tester
 

@@ -4,7 +4,7 @@ import os
 from accelerate import Accelerator
 from torch.utils.data import DataLoader
 from omegaconf import OmegaConf
-from models.model import Model
+from model.models import Model
 from utils.config import load_cfg, get_config_value
 
 
@@ -46,7 +46,7 @@ class Tester:
             return OmegaConf.create({})
 
     def _load_checkpoint(self, ckpt_name: str):
-        if not os.path.exists(ckpt_path := os.path.join(self.exp_dir, 'checkpoints', 'models', ckpt_name)):
+        if not os.path.exists(ckpt_path := os.path.join(self.exp_dir, 'checkpoints', 'model', ckpt_name)):
             logging.warning("No checkpoint found, skipping loading.")
             return
         self.model.load(ckpt_path)

@@ -1,4 +1,4 @@
-from models.model import Model
+from model.models import Model
 import os
 from torch.utils.data import Dataset, random_split
 from engine.trainer import Trainer

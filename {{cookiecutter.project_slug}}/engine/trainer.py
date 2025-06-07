@@ -11,7 +11,7 @@ from torch.optim import lr_scheduler
 from utils.logger import get_logger
 from utils.config import load_cfg, get_config_value
 from utils.misc import save_checkpoint, load_checkpoint
-from models.model import Model
+from model.models import Model
 
 
 class Trainer:
@@ -74,7 +74,7 @@ class Trainer:
         self._setup_device()
 
         self.checkpoint_dir = os.path.join(exp_dir, 'checkpoints')
-        self.model_dir = os.path.join(self.checkpoint_dir, 'models')
+        self.model_dir = os.path.join(self.checkpoint_dir, 'model')
         self.train_state_dir = os.path.join(self.checkpoint_dir, 'train_states')
 
         self.metrics = {}

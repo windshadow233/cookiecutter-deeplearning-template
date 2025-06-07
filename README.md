@@ -87,14 +87,14 @@ class MyData(Dataset):
 
 ### 定义模型
 
-接下来，编写模型类代码，继承自 `models.model.Model` 类，并实现必要的方法：
+接下来，编写模型类代码，继承自 `model.models.Model` 类，并实现必要的方法：
 
-- `forward`：模型的前向传播函数，接收数据集的输出作为输入，返回一个 `dict`。
+- `forward`：模型的前向传播函数，接收数据集一个 batch 作为输入，返回一个 `dict`。
 
-此方法必须以前面数据集类的 `data_collate_fn` 方法返回的字典键名作为输入参数，同时返回一个 `dict`，此 `dict` 必须至少包含键 `loss`。（如重写 `Trainer.train_step` 函数则可忽略此条）
+此方法必须以前面数据集类的 `__getitem__` 方法返回的字典键名作为输入参数，同时返回一个 `dict`，此 `dict` 必须至少包含键 `loss`。（如重写 `Trainer.train_step` 函数则可忽略此条）
 
 ```python
-from models.model import Model
+from model.models import Model
 
 
 class MyModel(Model):
@@ -103,6 +103,9 @@ class MyModel(Model):
         ...
 
     def forward(self, image, label):
+        """
+        前面数据集 __getitem__: return {'image': x, 'label': y}
+        """
         ...
         return {
             'loss': ...,
@@ -122,7 +125,7 @@ class MyModel(Model):
 
 编写训练器类代码，继承自 `engine.trainer.Trainer` 类，并实现必要的方法：
 
-- `evaluate`: 测试函数，以 `models.model.Model` 和 `dataloader: torch.utils.data.DataLoader` 为参数，返回一个 `dict`，包含各种自定义的测试指标。
+- `evaluate`: 测试函数，以 `model.models.Model` 和 `dataloader: torch.utils.data.DataLoader` 为参数，返回一个 `dict`，包含各种自定义的测试指标。
 
 例如：
 
@@ -199,7 +202,7 @@ class MyTrainer(Trainer):
 
 编写测试器类代码，继承自 `engine.tester.Tester` 类，并实现必要的方法：
 
-- `evaluate`: 测试函数，以 `models.model.Model` 与 `dataloader: torch.utils.data.DataLoader` 为参数，返回一个 `dict`，包含各种自定义的测试指标。
+- `evaluate`: 测试函数，以 `model.models.Model` 与 `dataloader: torch.utils.data.DataLoader` 为参数，返回一个 `dict`，包含各种自定义的测试指标。
 
 ```python
 from engine.tester import Tester
