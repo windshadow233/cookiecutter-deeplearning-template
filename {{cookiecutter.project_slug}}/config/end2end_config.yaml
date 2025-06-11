@@ -15,6 +15,19 @@ train:
       - 0
       - 1
   num_workers: 0 # 数据加载工作线程数
+  accelerator:
+    gradient_accumulation_steps: 1 # 梯度累积步数
+    mixed_precision: "no" # 支持 "no", "fp16", "bf16"
+    split_batches: true
+  resume_ckpt: last.pt
+  save:
+    every: 1 # 模型保存频率，单位为 epoch，为 0 则不保存
+    best:
+      every: 1 # 最佳模型保存频率，单位为 epoch，为 0 则不保存
+      metric: val_acc  # 最佳模型的指标, 支持 "val_loss", "val_acc" 等，取决于 Trainer.evaluate 方法的返回值
+      mode: max # 最佳模型的指标模式，支持 "min", "max"
+    last:
+      every: 1 # 最新模型保存频率，单位为 epoch，为 0 则不保存
   optimizer:
     type: adam # 支持 "adam", "sgd", "adamw", "rmsprop", "adagrad", "adadelta", "adamax", "asgd"
     lr: 0.00001
@@ -37,20 +50,6 @@ train:
       ############# ASGD（当 type: asgd 时启用）
 #      lambd: 0.0001
 #      alpha: 0.75
-  accelerator:
-    gradient_accumulation_steps: 1 # 梯度累积步数
-    mixed_precision: "no" # 支持 "no", "fp16", "bf16"
-    split_batches: true
-  resume_ckpt: last.pt
-  save:
-    every: 1 # 模型保存频率，单位为 epoch，为 0 则不保存
-    best:
-      every: 1 # 最佳模型保存频率，单位为 epoch，为 0 则不保存
-      metric: val_acc  # 最佳模型的指标, 支持 "val_loss", "val_acc" 等，取决于 validate_fcn 函数的返回值
-      mode: max # 最佳模型的指标模式，支持 "min", "max"
-    last:
-      every: 1 # 最新模型保存频率，单位为 epoch，为 0 则不保存
-
   scheduler:
     name: cosine  # 支持：none, step, multistep, constant, linear, exp, poly, cosine, cosine_restart, cyclic, onecycle, plateau
 
