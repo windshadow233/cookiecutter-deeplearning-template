@@ -25,7 +25,7 @@
 
 ```bash
 pip install cookiecutter
-````
+```
 
 使用 `cookiecutter` 命令通过此模板创建新项目：
 
@@ -131,7 +131,6 @@ class MyModel(Model):
 
 ```python
 from engine.trainer import Trainer
-import torch
 
 class MyTrainer(Trainer):
     def __init__(
@@ -169,7 +168,7 @@ train:
       metric: val_acc  # plateau 监控指标，支持 "val_loss", "val_acc" 等
 ```
 
-`train.save.best.metric` 及 `train.scheduler.params.metric` 的值必须包含于 `validate_fn` 方法返回的字典键名中。
+`train.save.best.metric` 及 `train.scheduler.params.metric` 的值必须包含于 `evaluate` 方法返回的字典键名中。
 
 可重写的方法：
 

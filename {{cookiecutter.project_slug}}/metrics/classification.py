@@ -1,5 +1,5 @@
 import torch
-from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score
+from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score, roc_auc_score
 from metrics.metric import _Metric
 
 
@@ -67,3 +67,18 @@ class Accuracy(_ClassificationMetric):
         if not self.preds or not self.targets:
             return 0.0
         return accuracy_score(self.targets, self.preds)
+
+
+class AUC(_ClassificationMetric):
+    def __init__(self, average='macro', multi_class='ovr'):
+        super().__init__()
+        self.average = average
+        self.multi_class = multi_class
+
+    def compute(self):
+        if not self.preds or not self.targets:
+            return 0.0
+        try:
+            return roc_auc_score(self.targets, self.preds, average=self.average, multi_class=self.multi_class)
+        except:
+            return 0.0
